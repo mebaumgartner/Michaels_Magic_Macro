@@ -1,0 +1,11 @@
+seedChoiceCas=False
+seedChannelCas='3'
+dcp1Booster=1.0
+lowPass=0.828
+highPass=1.104
+multVal=2.0
+outVal=1.38
+minSeedSizeCas=50.0
+invertSeedCas=True
+casPost='Despeckle'
+blurCas=0.0
