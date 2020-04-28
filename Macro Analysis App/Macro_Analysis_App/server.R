@@ -36,7 +36,7 @@ server <- function(input, output) {
     output$plotso2 <- renderPlot(ggplot())
     
     
-    output$statsTable <- renderTable(values$statistics)
+    output$statsTable <- renderTable(values$statistics, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
     
     #Create a UI based on the analyzed values put in
     output$plotSelection = renderUI({
@@ -63,7 +63,7 @@ server <- function(input, output) {
         } else if (input$linkFunction == "Poisson"){
             regTitle <-"Select Dependent variable"
             regOptions1 <- values$choices
-            regOptions1 <- regOptions1[grepl("Number.of.Center.Cells|Number.of.Border.Cells|Total.Number.of.Cells|Number.of.Clones|Total.Caspase.Cell.Count|Center.Caspase.Cell.Count|Border.Caspase.Cell.Count|NonCaspase.Cells.in.Border|NonCaspase.Cells.in.Center", regOptions1)]
+            
         } else {
             regTitle <- "Select Dependent variable"
             regOptions1 <- values$choices
@@ -146,14 +146,17 @@ server <- function(input, output) {
     
     
     observeEvent(input$saveBtn, {
+      
+      
         wda <- data.frame(
             Image.Name = c(1,2,3,4,5)
             
         )
-        values <- valuesRestore
+        
         tryCatch(
             # This is what I want to do...
             {
+                values <- valuesRestore
                 wda <- rbindlist(lapply(input$csvs$datapath, read.csv), use.names = TRUE, fill = TRUE)
                 Image.Name <- unique(wda$Image.Name)
                 values$genAssign<- data.frame(Image.Name)
@@ -167,51 +170,9 @@ server <- function(input, output) {
                 return(NA)
             }
         )
-        if(input$analysisType == "Generic table data"){
-            
-            
-            
-            
-            tryCatch(
-                # This is what I want to do...
-                {
-                    
-                    values$genAssign <- data.frame(
-                        Image.Name =  rep("Input Unique Identifier here in this column", times =1, length.out = 30),
-                        week = rep("Input experiment/week groupings here", times =1, length.out = 30),
-                        GeneName = rep("Input condition/treatment here", times =1, length.out = 30),
-                        Data1 = rep("Input Data values here", times =1, length.out = 30),
-                        Data2 = rep("Input Data values here", times =1, length.out = 30),
-                        Data3 = rep("Input Data values here", times =1, length.out = 30),
-                        Data4 = rep("Input Data values here", times =1, length.out = 30),
-                        Data5 = rep("Input Data values here", times =1, length.out = 30),
-                        Data6 = rep("Input Data values here", times =1, length.out = 30),
-                        Data7 = rep("Input Data values here", times =1, length.out = 30),
-                        Data8 = rep("Input Data values here", times =1, length.out = 30),
-                        Data9 = rep("Input Data values here", times =1, length.out = 30),
-                        Data10 = rep("Input Data values here", times =1, length.out = 30),
-                        Data11 = rep("Input Data values here", times =1, length.out = 30),
-                        Data12 = rep("Input Data values here", times =1, length.out = 30),
-                        Data13 = rep("Input Data values here", times =1, length.out = 30),
-                        Data14 = rep("Input Data values here", times =1, length.out = 30),
-                        Data15 = rep("Input Data values here", times =1, length.out = 30)
-                        
-                        
-                        
-                    )
-                    
-                },
-                #... but if an error occurs, tell me what happened:
-                error=function(error_message) {
-                    message("Could not generate table")
-                    return(NA)
-                }
-            )
-        }
         
-        validate(
-            need(input$analysisType == "No Clones Analysis", "Needs no clones")
-        )
+        
+        
         
         tryCatch(
             # This is what I want to do...
@@ -249,20 +210,56 @@ server <- function(input, output) {
     
     
     analysis <- observeEvent(input$go,{
+      
+        #Reset all our outputs so we don't get confused
+        output$statsTable <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+        output$statsTableP <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+        output$contents <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+        output$deathTable <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+        output$statsHeader <- renderText("")
+        output$statsHeaderP <- renderText("")
+        output$normality <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+        output$normality2 <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+        output$normalityHeader <- renderText("")
+        output$normalityHeader2 <- renderText("")
+        output$fligner <- renderTable(data.frame())
+        output$leveneHeader <- renderText("")
+        output$fishyPrint <- renderText("")
+        output$siggy <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+        output$fishyCounty <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+        output$plotso <- renderPlot(ggplot())
+        output$plotso2 <- renderPlot(ggplot())
+        
+    
+        tryCatch(
+          {
         
         #Read dataset csv files to the variable 'wda'
         wwda2 <- rbindlist(lapply(input$csvs$datapath, read.csv), use.names = TRUE, fill = TRUE)
         
+        
+        #Check what type of dataframe has been uploaded
+        okayGo <- FALSE
+        for (i in colnames(wwda2)){
+          if(grepl("CloneID", i, fixed = TRUE)) {
+            okayGo <- TRUE
+          
+          }
+          
+          if(grepl("Pouch.Volume.", i, fixed = TRUE)) {
+           
+            okayGo <- TRUE
+            }
+        }
+        
         #Here we make sure the correct steps have been taken (i.e. right buttons pressed, right files uploaded)
         validate(
-            need(input$analysisType == "Re-Load Analyzed Dataset", "Please load a whole disc analysis file and assign genotypes")
+            need(okayGo == TRUE, "Please load a previously analyzed data table")
         )
-        # tryCatch(
-        # This is where we add the speckle data
-        #  {
-        
+
+        wwda2<- as.data.frame(wwda2)
         #Output data into analyzed data tab
-        output$contents <- renderTable(wwda2)
+        output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
         values$rawChoices <- colnames(wwda2)
         values$choices <- colnames(wwda2)
         
@@ -271,66 +268,96 @@ server <- function(input, output) {
         values$wwdaArchive <- wwda2
         
         #Output table
-        output$contents <- renderTable(wwda2)
+        output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+      
+        
         
         TrueCasCounts <- 0
         TrueNonCasCounts <- 0
+        genotypeNames <- c()
+    
         for (i in colnames(wwda2)){
-            if (i == "Number.of.Center.Cells"){
-                TrueNonCasCounts <- 1
-            }
-            if (i == "Border.Caspase.Cell.Count")
-                TrueCasCounts <- 1
+          if(grepl("Number.of.Center.Cells", i, fixed = TRUE)){
+            TrueNonCasCounts <- 1
+            genotypeNames <- c(genotypeNames, gsub("Number.of.Center.Cells.", "", i ))
+          }
+          if(grepl("Border.Caspase.Cell.Count", i, fixed = TRUE)){
+            TrueCasCounts <- 1
+            genotypeNames <- c(genotypeNames, gsub("Border.Caspase.Cell.Count.", "", i ))
+          }
         }
+    
+        genotypeNames <- unique(genotypeNames)
         
-        #  tryCatch(
-        # This is where we add the speckle data
-        #   {
+        
+        
+         tryCatch(
+        #Restore caspase counts
+          {
         
         #If we have the actual counts from the macro, we prefer to use those. Otherwise, we revert to the mathematical approximation
-        if (TrueNonCasCounts == 0){
-            borderCells <- aggregate(wwda2$Estimated.CellsInBorder, list(wwda2$GeneWeek), sum)
-            centerCells <- aggregate(wwda2$Estimated.CellsInCenter, list(wwda2$GeneWeek), sum)
-        } else {
-            borderCells <- aggregate(wwda2$NonCaspase.Cells.in.Border, list(wwda2$GeneWeek), sum)
-            centerCells <- aggregate(wwda2$NonCaspase.Cells.in.Center, list(wwda2$GeneWeek), sum)
+        
+        if (TrueCasCounts == 1 && TrueNonCasCounts == 1){
+          
+          for (i in genotypeNames){
+    
+            
+
+            queryString <- paste(i, "GeneWeek", sep = "|")
+            genotypeVals <- wwda2[ , grepl( queryString , names( wwda2) ) ]
+            
+
+            headers <- colnames(genotypeVals)
+            newHeaders <- c()
+            for (z in headers) {
+              query <- paste(".", i, sep="")
+              
+              newHead <- gsub(query, "", z)
+              
+              newHeaders <- c(newHeaders, newHead)
+            }
+            
+            colnames(genotypeVals) <- newHeaders
+            
+   
+        
+          
+          borderCells <- aggregate(genotypeVals$NonCaspase.Cells.in.Border, list(genotypeVals$GeneWeek), sum)
+          
+          centerCells <- aggregate(genotypeVals$NonCaspase.Cells.in.Center, list(genotypeVals$GeneWeek), sum)
+          
+          borderCasCells <- aggregate(genotypeVals$Border.Caspase.Cell.Count, list(genotypeVals$GeneWeek), sum)
+          
+          centerCasCells <- aggregate(genotypeVals$Center.Caspase.Cell.Count, list(genotypeVals$GeneWeek), sum)
+          
+
+          #Format these values into a table suitable for a fisher test
+          deathTable <- data.frame(
+              Genotype = borderCells[,1],
+              NotCasCellsInBorder = borderCells[,2],
+              CasCellsInBorder = borderCasCells[,2],
+              NotCasCellsInCenter = centerCells[,2],
+              CasCellsInCenter = centerCasCells[,2]
+          )
+
+          values$deathTable <- deathTable
+          output$deathTable <- renderTable(values$deathTable, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+          }
         }
         
-        if (TrueCasCounts == 0){
-            borderCasCells <- aggregate(wwda2$Estimated.CasCellsInBorder, list(wwda2$GeneWeek), sum)
-            centerCasCells <- aggregate(wwda2$Estimated.CasCellsInCenter, list(wwda2$GeneWeek), sum)
-            borderCells[,2] <- borderCells [,2] - borderCasCells[,2] 
-            centerCells[,2] <- centerCells [,2] - centerCasCells[,2] 
-        } else {
-            borderCasCells <- aggregate(wwda2$Border.Caspase.Cell.Count, list(wwda2$GeneWeek), sum)
-            centerCasCells <- aggregate(wwda2$Center.Caspase.Cell.Count, list(wwda2$GeneWeek), sum)        
-        }  
         
-        #Format these values into a table suitable for a fisher test
-        deathTable <- data.frame(
-            Genotype = borderCells[,1],
-            NotCasCellsInBorder = borderCells[,2],
-            CasCellsInBorder = borderCasCells[,2],
-            NotCasCellsInCenter = centerCells[,2],
-            CasCellsInCenter = centerCasCells[,2]
-        )
-        
-        values$deathTable <- deathTable
-        output$deathTable <- renderTable(values$deathTable)
-        
-        
-        #   },
-        #  error=function(error_message) {
-        #     message("Unable to prepare death table")
-        #     return(NA)
-        #    }
-        #  )
-        # },
-        #   error=function(error_message) {
-        #      message("Unable to re-analyze data")
-        #     return(NA)
-        #    }
-        #  )
+          },
+         error=function(error_message) {
+            message("Unable to prepare death table")
+            return(NA)
+           }
+         )
+        },
+          error=function(error_message) {
+             message("Unable to re-analyze data")
+            return(NA)
+           }
+         )
         
     }
     )
@@ -343,41 +370,31 @@ server <- function(input, output) {
     
     analysis <- observeEvent(input$go,{
         
-        #Reset all our outputs so we don't get confused
-        output$statsTable <- renderTable(data.frame())
-        output$statsTableP <- renderTable(data.frame())
-        output$contents <- renderTable(data.frame())
-        output$deathTable <- renderTable(data.frame())
-        output$statsHeader <- renderText("")
-        output$statsHeaderP <- renderText("")
-        output$normality <- renderTable(data.frame())
-        output$normality2 <- renderTable(data.frame())
-        output$normalityHeader <- renderText("")
-        output$normalityHeader2 <- renderText("")
-        output$fligner <- renderTable(data.frame())
-        output$leveneHeader <- renderText("")
-        output$fishyPrint <- renderText("")
-        output$siggy <- renderTable(data.frame())
-        output$fishyCounty <- renderTable(data.frame())
-        output$plotso <- renderPlot(ggplot())
-        output$plotso2 <- renderPlot(ggplot())
         
-        #Read genotype assignment csv file
-        trad  <- values$genAssign
+      tryCatch(
+        {    
+        
         
         #Read dataset csv files
         cta <- rbindlist(lapply(input$csvs$datapath, read.csv), use.names = TRUE, fill = TRUE)
         
+        #Check what type of dataframe has been uploaded
+        okayGo <- FALSE
+        for (i in colnames(cta)){
+          if(grepl("Clone.ID", i, fixed = TRUE)) {okayGo <- TRUE}
+        }
+    
         
         #Only allow analysis to proceed if the correct filetype has been loaded and genotype assignments have been made
         
         validate(
             need(cta$Clone.ID, "Please load a clone tracking analysis file and assign genotypes"),
-            need(input$analysisType == "Individual Clone Analysis", "Please load a clone tracking analysis file and assign genotypes"),
+            need(okayGo == TRUE, "Please load a clone tracking analysis file and assign genotypes"),
             need(values$loaded == 1, "Load genotype assignments first!")
         )
         
-   
+        #Read genotype assignment csv file
+        trad  <- values$genAssign
         
         #Merge the CSV file input with the genotype assignments
         ccta <- merge(x = cta, y = trad)
@@ -425,9 +442,12 @@ server <- function(input, output) {
         #Add in the caspase data, if applicable
         tryCatch(
             {
+              if("Caspase.Coverage" %in% colnames(ccta2))
+              {
                 ccta3 <- cbind(ccta3, Caspase.Coverage = tapply(ccta2$Caspase.Coverage , ccta2$CloneZName , sum))
                 ccta3 <- cbind(ccta3, Caspase.Border = tapply(ccta2$Caspase.Border , ccta2$CloneZName , sum))
                 ccta3 <- cbind(ccta3, Caspase.Center = tapply(ccta2$Caspase.Center , ccta2$CloneZName , sum))
+                }
                 
             },
             # ... but if an error occurs, tell me what happened: 
@@ -455,11 +475,14 @@ server <- function(input, output) {
         
         #Sum the integrated density values (fluorescence intensities non normalized to area)
         tryCatch(
-            {
+            {             
+              if("Clone.Fluorescence" %in% colnames(ccta2))
+              {
                 #sum integrated fluorescence density
                 ccta3 <- cbind(ccta3, Clone.Fluorescence = tapply(ccta2$Clone.Fluorescence , ccta2$CloneZName , sum))
                 ccta3 <- cbind(ccta3, Border.Fluorescence = tapply(ccta2$Border.Fluorescence , ccta2$CloneZName , sum))
                 ccta3 <- cbind(ccta3, Center.Fluorescence = tapply(ccta2$Center.Fluorescence , ccta2$CloneZName , sum))
+                }
             },
             # ... but if an error occurs, tell me what happened:
             error=function(error_message) {
@@ -501,6 +524,8 @@ server <- function(input, output) {
         tryCatch(
             #Add caspase data if applicable
             {
+              if("Caspase.Coverage" %in% colnames(ccta3))
+              {
                 ccta3sumZ2 <- cbind(ccta3sumZ2, Caspase.Volume = tapply(ccta3$Caspase.Coverage , ccta3$CloneName , sum))
                 ccta3sumZ2 <- cbind(ccta3sumZ2, Caspase.in.Border.Volume = tapply(ccta3$Caspase.Border , ccta3$CloneName , sum))
                 ccta3sumZ2 <- cbind(ccta3sumZ2, Caspase.in.Center.Volume = tapply(ccta3$Caspase.Center , ccta3$CloneName , sum))
@@ -511,6 +536,7 @@ server <- function(input, output) {
                                     /
                                         c( tapply(ccta3$Caspase.Border , ccta3$CloneName , sum) / tapply(ccta3$Border.Area , ccta3$CloneName , sum) ))
                 ccta3sumZ2 <- cbind(ccta3sumZ2, log2.Competitive.index = log(ccta3sumZ2$Competitive.index, 2))
+                }
             },
             # ... but if an error occurs, tell me what happened: 
             error=function(error_message) {
@@ -525,12 +551,15 @@ server <- function(input, output) {
         tryCatch(
             #Add fluorescence data if applicable
             {
-                
+              if("Clone.Fluorescence.IntDen" %in% colnames(ccta3))
+              {                
                 ccta3sumZ2 <- cbind(ccta3sumZ2,  Mean.Fluorescence.of.Clone = tapply(ccta3$Clone.Fluorescence.IntDen , ccta3$CloneName , sum)/ tapply(ccta3$Clone.Area , ccta3$CloneName , sum))
                 ccta3sumZ2 <- cbind(ccta3sumZ2,  Mean.Fluorescence.of.Border = tapply(ccta3$Border.Fluorescence.IntDen , ccta3$CloneName , sum) / tapply(ccta3$Border.Area , ccta3$CloneName , sum))
                 ccta3sumZ2 <- cbind(ccta3sumZ2,  Mean.Fluorescence.of.Center = tapply(ccta3$Center.Fluorescence.IntDen , ccta3$CloneName , sum) / tapply(ccta3$Center.Area , ccta3$CloneName , sum))
                 
-            },
+              }
+           
+             },
             # ... but if an error occurs, tell me what happened: 
             error=function(error_message) {
                 message("no fluorescence")
@@ -541,9 +570,12 @@ server <- function(input, output) {
         tryCatch(
             # This is what I want to do...
             {
+              if("Clone.Volume" %in% colnames(ccta3sumZ2))
+              {  
                 clonepercent = ccta3sumZ2$Clone.Volume*100 /ccta3sumZ2$Pouch.Volume
                 ccta3sumZ2 <- cbind(ccta3sumZ2, Number.of.Z.Slices = Diff)
                 ccta3sumZ2 <- cbind(ccta3sumZ2, Clone.Volume.Normalized.to.Pouch= clonepercent)
+                }
             },
             # ... but if an error occurs, tell me what happened:
             error=function(error_message) {
@@ -565,7 +597,7 @@ server <- function(input, output) {
         wwda2<-wwda2[order(wwda2$GeneWeek), ]
         
         #Output data into analyzed data tab
-        output$contents <- renderTable(wwda2)
+        output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
         values$rawChoices <- colnames(wwda2)
         wwda2sub <- subset(wwda2, select = -c(CloneID, GeneName, CloneName, week, GeneWeek))
         values$choices <- colnames(wwda2sub)
@@ -576,6 +608,14 @@ server <- function(input, output) {
         
         
         
+   
+    },
+    # ... but if an error occurs, tell me what happened: 
+    error=function(error_message) {
+      message("no caspase")
+      return(NA)
+    }
+    )
     })
     
     
@@ -585,7 +625,8 @@ server <- function(input, output) {
     
     analysis <- observeEvent(input$go, {
         
-        
+      tryCatch(
+        {       
         #Read genotype assignment csv file to the variable 'trad'
         trad  <- values$genAssign
         
@@ -599,16 +640,24 @@ server <- function(input, output) {
         }
         
         
-        colnames(trad) <- c("Image Name", "week", "Gene.Name")
-
+       
+        
+        #Check what type of dataframe has been uploaded
+        okayGo <- FALSE
+        for (i in colnames(wda)){
+          if(grepl("Pouch Area<", i, fixed = TRUE)) {okayGo <- TRUE}
+        }
+        
         
         #Here we make sure the correct steps have been taken (i.e. right buttons pressed, right files uploaded)
         validate(
             need(wda$File, "Please load a whole disc analysis file and assign genotypes"),
-            need(input$analysisType == "Whole Disc Analysis", "Please load a whole disc analysis file and assign genotypes"),
+            need(okayGo == TRUE, "Please load a whole disc analysis file and assign genotypes"),
             need(values$loaded == 1, "Load genotype assignments first!")
         )
+       
         
+        colnames(trad) <- c("Image Name", "week", "Gene.Name")
         #We tack the assignments onto the input data, creating a dataframe 'wwda2' with our raw data and assignments
         wwdaFull <- merge(x = wda, y = trad)
         
@@ -697,6 +746,10 @@ server <- function(input, output) {
 
             tryCatch(
                 {
+                  if("Cell.Count.in.Center" %in% colnames(wwda))
+                  {
+                    
+                  
                     wwda2 <- cbind(wwda2, Number.of.Center.Cells = tapply(wwda$Cell.Count.in.Center , wwda$Image.Name , unique))
                     wwda2 <- cbind(wwda2, Number.of.Border.Cells = tapply(wwda$Cell.Count.in.Border , wwda$Image.Name , unique))
                     wwda2 <- cbind(wwda2, Total.Number.of.Cells = tapply(wwda$Total.Cell.count, wwda$Image.Name, unique))
@@ -706,7 +759,9 @@ server <- function(input, output) {
                     wwda2 <- cbind(wwda2, Density.of.Cells.in.Clones = (tapply(wwda$Cell.Count.in.Border , wwda$Image.Name , unique)+tapply(wwda$Cell.Count.in.Center , wwda$Image.Name , unique) / tapply(wwda$Clone.Area , wwda$Image.Name , sum)))
                     wwda2 <- cbind(wwda2, Average.Cell.Volume = tapply(wwda$Clone.Area , wwda$Image.Name , sum) / (tapply(wwda$Cell.Count.in.Border , wwda$Image.Name , unique)+tapply(wwda$Cell.Count.in.Center , wwda$Image.Name , unique)))
                     wwda2 <- cbind(wwda2, Average.Cell.Area.Per.Z.Plane = (tapply(wwda$Clone.Area , wwda$Image.Name , sum) / (tapply(wwda$Cell.Count.in.Border , wwda$Image.Name , unique)+tapply(wwda$Cell.Count.in.Center , wwda$Image.Name , unique)) / (tapply(wwda$Z.level, list(wwda$Image.Name), max) - tapply(wwda$Z.level, list(wwda$Image.Name), min))))
-                },
+               
+                  }
+                 },
                 error=function(error_message) {
                     message("no complete counts")
                     return(NA)
@@ -716,8 +771,11 @@ server <- function(input, output) {
             tryCatch(
                 # We add the number of clones information, if its in the data table
                 { 
+                  
+                  if("Total.Number.of.Clones" %in% colnames(wwda))
+                  {
                     wwda2 <- cbind(wwda2, Number.of.Clones = tapply(wwda$Total.Number.of.Clones , wwda$Image.Name , unique))
-                    
+                  }
                 },
                 error=function(error_message) {
                     message("no clone counts")
@@ -734,6 +792,9 @@ server <- function(input, output) {
             tryCatch(
                 # We attempt to analyze the caspase coverage data. If it exists, it will be added to the table. Otherwise, we skip it.
                 {
+                  
+                  if("Caspase.Area" %in% colnames(wwda))
+                  {
                     wwda2 <- cbind(wwda2, Total.Caspase.Volume = tapply(wwda$Caspase.Area , wwda$Image.Name , sum))
                     wwda2 <- cbind(wwda2, Clone.Caspase.Volume = tapply(wwda$Clone.Caspase , wwda$Image.Name , sum))
                     wwda2 <- cbind(wwda2, Center.Caspase.Volume = tapply(wwda$Center.Caspase , wwda$Image.Name , sum))
@@ -749,11 +810,13 @@ server <- function(input, output) {
                                                                  /
                                                                      c( tapply(wwda$Border.Caspase, wwda$Image.Name , sum) / tapply(wwda$Border.Area , wwda$Image.Name , sum) ) ))
                     wwda2 <- cbind(wwda2, log2.Competitive.Index = log(wwda2$Competitive.Index, 2))
-                    
+                  }
                     
                     tryCatch(
                         # This is where we incorporate the dcp1 counts, if applicable
                         {
+                          if("Total.Caspase.Cells" %in% colnames(wwda))
+                          {
                             wwda2 <- cbind(wwda2, Total.Caspase.Cell.Count = tapply(wwda$Total.Caspase.Cells , wwda$Image.Name , unique))
                             wwda2 <- cbind(wwda2, Center.Caspase.Cell.Count = tapply(wwda$Caspase.Count.in.Center , wwda$Image.Name , unique))
                             wwda2 <- cbind(wwda2, Border.Caspase.Cell.Count = tapply(wwda$Caspase.Count.in.Border , wwda$Image.Name , unique))
@@ -767,17 +830,21 @@ server <- function(input, output) {
                             tryCatch(
                                 # This is where we do the viable/nonviable cell counts
                                 {
+                                  if("Cell.Count.in.Border" %in% colnames(wwda))
+                                  {
                                     wwda2 <- cbind(wwda2, NonCaspase.Cells.in.Border = tapply(wwda$Cell.Count.in.Border , wwda$Image.Name , unique) - tapply(wwda$Caspase.Count.in.Border , wwda$Image.Name , unique))
                                     wwda2 <- cbind(wwda2, NonCaspase.Cells.in.Center = tapply(wwda$Cell.Count.in.Center , wwda$Image.Name , unique) - tapply(wwda$Caspase.Count.in.Center , wwda$Image.Name , unique))
                                     wwda2 <- cbind(wwda2, Percent.Cells.Dying.in.Border = tapply(wwda$Caspase.Count.in.Border , wwda$Image.Name , unique) * 100/ tapply(wwda$Cell.Count.in.Border , wwda$Image.Name , unique))
                                     wwda2 <- cbind(wwda2, Percent.Cells.Dying.in.Center = tapply(wwda$Caspase.Count.in.Center , wwda$Image.Name , unique) * 100/ tapply(wwda$Cell.Count.in.Center , wwda$Image.Name , unique))
                                     TrueNonCasCounts <- 1
+                                  }
                                 },
                                 error=function(error_message) {
                                     message("no complete counts")
                                     return(NA)
                                 }
                             ) 
+                          }
                             
                         },
                         error=function(error_message) {
@@ -796,6 +863,8 @@ server <- function(input, output) {
             tryCatch(
                 # This is where we add the fluorescence data to the table, if applicable
                 {
+                  if("Clone.Fluorescence" %in% colnames(wwda))
+                  {
                  
                     wwda2 <- cbind(wwda2, Clone.Fluorescence = tapply(wwda$Clone.Fluorescence , wwda$Image.Name , sum) / tapply(wwda$Clone.Area , wwda$Image.Name , sum))
                     wwda2 <- cbind(wwda2, Center.Fluorescence = tapply(wwda$Center.Fluorescence , wwda$Image.Name , sum)/ tapply(wwda$Center.Area , wwda$Image.Name , sum))
@@ -804,6 +873,7 @@ server <- function(input, output) {
                     
                     wwda2 <- cbind(wwda2, Ratio.Fluorescence.Clones.vs.Not.Clones = wwda2$Clone.Fluorescence / wwda2$Not.Clone.Fluorescence)
                     wwda2 <- cbind(wwda2, Ratio.Fluorescence.Border.vs.Center = wwda2$Border.Fluorescence / wwda2$Center.Fluorescence)
+                  }
                     
                 },
                 error=function(error_message) {
@@ -815,6 +885,8 @@ server <- function(input, output) {
             tryCatch(
                 # This is where we add the speckle data
                 {
+                  if("X.Speckles.in.Clones" %in% colnames(wwda))
+                  {
                     
                     wwda2 <- cbind(wwda2, Density.of.Speckles.in.Clones = tapply(wwda$X.Speckles.in.clones , wwda$Image.Name , sum) / tapply(wwda$Clone.Area , wwda$Image.Name , sum))
                     wwda2 <- cbind(wwda2, Density.of.Speckles.in.Border = tapply(wwda$X.Speckles.in.border , wwda$Image.Name , sum) / tapply(wwda$Border.Area , wwda$Image.Name , sum))
@@ -824,6 +896,8 @@ server <- function(input, output) {
                     wwda2 <- cbind(wwda2, Speckle.Density.Border.vs.Center = wwda2$Density.of.Speckles.in.Border / wwda2$Density.of.Speckles.in.Center)
                     
                     tryCatch({
+                      if("Speckle.Area.in.Clones.IntDen" %in% colnames(wwda))
+                      {
                         
                         wwda2 <- cbind(wwda2, Percent.Speckle.Coverage.of.Clones = tapply(wwda$Speckle.Area.in.Clones.IntDen , wwda$Image.Name , sum) * 100/ tapply(wwda$Clone.Area , wwda$Image.Name , sum))
                         wwda2 <- cbind(wwda2, Percent.Speckle.Coverage.of.Border = tapply(wwda$Speckle.Area.in.Border.IntDen , wwda$Image.Name , sum) * 100/ tapply(wwda$Border.Area , wwda$Image.Name , sum))
@@ -839,6 +913,7 @@ server <- function(input, output) {
                         wwda2 <- cbind(wwda2, Average.Speckle.Size.Border = tapply(wwda$Speckle.Area.in.Border.IntDen , wwda$Image.Name , sum) / tapply(wwda$X.Speckles.in.border , wwda$Image.Name , sum))
                         wwda2 <- cbind(wwda2, Average.Speckle.Size.Center = tapply(wwda$Speckle.Area.in.Center.IntDen , wwda$Image.Name , sum) / tapply(wwda$X.Speckles.in.Center , wwda$Image.Name , sum))
                         wwda2 <- cbind(wwda2, Average.Speckle.Size.Not.Clones = tapply(wwda$Speckle.Area.in.Not.Clones.IntDen , wwda$Image.Name , sum) / tapply(wwda$X.Speckles.in.Not.Clones , wwda$Image.Name , sum))
+                        }
                         
                     },
                     error=function(error_message) {
@@ -846,6 +921,7 @@ server <- function(input, output) {
                         return(NA)
                     }
                     )
+                  }
                     
                     
                     
@@ -882,6 +958,9 @@ server <- function(input, output) {
                 {
                     
                     #If we have the actual counts from the macro, we prefer to use those. Otherwise, we revert to the mathematical approximation
+                  
+                  if("NonCaspase.Cells.in.Border" %in% colnames(wwda2))
+                  {
                     
                     borderCells <- aggregate(wwda2$NonCaspase.Cells.in.Border, list(wwda2$GeneWeek), sum)
                     centerCells <- aggregate(wwda2$NonCaspase.Cells.in.Center, list(wwda2$GeneWeek), sum)
@@ -899,7 +978,8 @@ server <- function(input, output) {
                     )
                     
                     values$deathTable <- deathTable
-                    output$deathTable <- renderTable(values$deathTable)
+                    output$deathTable <- renderTable(values$deathTable, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+                  }
                     
                 },
                 error=function(error_message) {
@@ -956,7 +1036,7 @@ server <- function(input, output) {
                     colnames(fishResult) <- c("p-value")
                     colnames(fishResultNum) <- c("p-value")
                     fishResult2I <- data.frame(Image.Name = wwda2$Image.Name, GeneWeek = wwda2$GeneWeek, fishResult, conf.interval.from = fishConfidence, conf.interval.to = fishConfidenceUB, p.adjusted = as.numeric(pAdj), p.adjustment.method = input$pAdj, odds.ratio=fishOddsRatio)
-                    output$siggy <- renderTable(fishResult2I)
+                    output$siggy <- renderTable(fishResult2I, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
                     fishResult2 <- data.frame(Image.Name = wwda2$Image.Name, GeneWeek = wwda2$GeneWeek, fishResultNum)
                     weekname <- unique(fishResult2$GeneWeek)
                     
@@ -979,7 +1059,7 @@ server <- function(input, output) {
                     
                     
                     fishCounts <- data.frame(GeneWeek = weekname, number.of.competing.wing.discs = significantCount, number.of.noncompeting.wing.discs = nonSignificant)
-                    output$fishyCounty <- renderTable(fishCounts)
+                    output$fishyCounty <- renderTable(fishCounts, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
                     
                     
                 },
@@ -1006,12 +1086,12 @@ server <- function(input, output) {
             else { values$wwda2 <- merge(values$wwda2, wwda2) }
             
             wwda2 <- values$wwda2
-            output$contents <- renderTable(wwda2)
+            output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
           
             
             #Store these values for later use, and output data visually for user
             values$wwdaArchive <- wwda2
-            output$contents <- renderTable(wwda2)
+            output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
             
             #Use the column headers to set which parameters the user can choose to analyze
             wwda2sub <- subset(values$wwda2, select = -c(File, Image.Name, GeneName, week, GeneWeek))
@@ -1022,207 +1102,16 @@ server <- function(input, output) {
             chal <- chal+1
         }
         
+    
+    },
+    # ... but if an error occurs, tell me what happened: 
+    error=function(error_message) {
+      message("no caspase")
+      return(NA)
+    }
+    )
+    
     })
-    
-    
-    ############################################################################################################################
-    ##################################################### No Clones Analysis ###################################################
-    ############################################################################################################################
-    
-    analysis <- observeEvent(input$go, {
-        
-        #Read genotype assignment csv file
-        trad  <- values$genAssign
-        
-        #Read dataset csv files
-        wda <- rbindlist(lapply(input$csvs$datapath, read.csv), use.names = TRUE, fill = TRUE)
-        
-        
-        #Make sure the dataset is ready for analysis
-        validate(
-            need(wda$File.Name, "Please load a whole disc analysis file and assign genotypes"),
-            need(input$analysisType == "No Clones Analysis", "Please load a no clones analysis file and assign genotypes"),
-            need(values$loaded == 1, "Load genotype assignments first!")
-        )
-        
-        #Add assignments to raw data to make the 'wwda' dataframe
-        wwda <- merge(x = wda, y = trad)
-        
-        #Get unique wing disc identifiers in order to collate data from z-levels to individual wing discs
-        wwda2 <- data.frame(
-            File = tapply(as.character(wwda$File.Name) , wwda$Image , unique),
-            Image = tapply(as.character(wwda$Image) , wwda$Image , unique),
-            GeneName =  tapply(as.character(wwda$Gene.Name) , wwda$Image , unique),
-            week = tapply(as.character(wwda$week) , wwda$Image , unique)
-        )
-        
-        #The GeneWeek value allows us to get each condition uniquely to paired box plot analysis
-        wwda2$GeneWeek <- paste(wwda2$GeneName, wwda2$week, sep=", ")
-        
-        #The no-clones analysis is very customizable, so everything is couched in try/catch loops to account for variances
-        tryCatch(
-            
-            #Add pouch area variable if the wing disc is not a half-and-half
-            {
-                wwda2 <- cbind(wwda2, Pouch.Area = tapply(wwda$Pouch.Area.Area , wwda$Image , unique))
-            },
-            error=function(error_message) {
-                message("no pouch area")
-                return(NA)
-            }
-        )
-        
-        tryCatch(
-            # Add compartment areas if the wing disc is a half and half
-            {
-                wwda2 <- cbind(wwda2, Anterior.Compartment.Area = tapply(wwda$Anterior.Compartment.Area , wwda$Image , unique))
-                wwda2 <- cbind(wwda2, Posterior.Compartment.Area = tapply(wwda$Posterior.Compartment.Area , wwda$Image , unique))
-                wwda2 <- cbind(wwda2, Ratio.Anterior.to.Posterior.Compartment.Area = (wwda2$Anterior.Compartment.Area / wwda2$Posterior.Compartment.Area))
-            },
-            error=function(error_message) {
-                message("no half and half")
-                return(NA)
-            }
-        )
-        
-        
-        
-        tryCatch(
-            # Add the caspase areas for whole disc
-            {
-                wwda2 <- cbind(wwda2, Pouch.Caspase.Raw = tapply(wwda$Pouch.Caspase , wwda$Image , sum))
-                wwda2 <- cbind(wwda2, Pouch.Caspase.Coverage = (wwda2$Pouch.Caspase.Raw / wwda2$Pouch.Area))
-                
-            },
-            #  ... but if an error occurs, tell me what happened:
-            error=function(error_message) {
-                message("no caspase")
-                return(NA)
-            }
-        )
-        
-        tryCatch(
-            # Add the caspase areas for half and halfs
-            {
-                wwda2 <- cbind(wwda2, Anterior.Compartment.Caspase.Raw = tapply(wwda$Anterior.Compartment.Caspase , wwda$Image , sum))
-                wwda2 <- cbind(wwda2, Anterior.Compartment.Caspase.Coverage = (wwda2$Anterior.Compartment.Caspase.Raw / wwda2$Anterior.Compartment.Area))
-                wwda2 <- cbind(wwda2, Posterior.Compartment.Caspase.Raw = tapply(wwda$Posterior.Compartment.Caspase , wwda$Image , sum))
-                wwda2 <- cbind(wwda2, Posterior.Compartment.Caspase.Coverage = (wwda2$Posterior.Compartment.Caspase.Raw / wwda2$Posterior.Compartment.Area))
-                wwda2 <- cbind(wwda2, Ratio.Caspase.Coverage.Anterior.vs.Posterior = (wwda2$Anterior.Compartment.Caspase.Coverage / wwda2$Posterior.Compartment.Caspase.Coverage))
-            },
-            # ... but if an error occurs, tell me what happened:
-            error=function(error_message) {
-                message("no caspase half and half")
-                return(NA)
-            }
-        )
-        
-        tryCatch(
-            # Add the speckles for non-half and halfs
-            {
-                wwda2 <- cbind(wwda2, Number.Pouch.Speckles = tapply(wwda$Pouch.Area.Reflux.Foci , wwda$Image , sum))
-                wwda2 <- cbind(wwda2, Density.Pouch.Speckles = (wwda2$Number.Pouch.Speckles / wwda2$Pouch.Area))
-                
-            },
-            #  ... but if an error occurs, tell me what happened:
-            error=function(error_message) {
-                message("no speckles")
-                return(NA)
-            }
-        )
-        
-        tryCatch(
-            # Add the speckles for half and halfs
-            {
-                wwda2 <- cbind(wwda2, Number.Anterior.Compartment.Speckles = tapply(wwda$Anterior.Compartment.Reflux.Foci , wwda$Image , sum))
-                wwda2 <- cbind(wwda2, Density.Anterior.Compartment.Speckles = (wwda2$Number.Anterior.Compartment.Speckles / wwda2$Anterior.Compartment))
-                wwda2 <- cbind(wwda2, Number.Posterior.Compartment.Speckles = tapply(wwda$Posterior.Compartment.Reflux.Foci , wwda$Image , sum))
-                wwda2 <- cbind(wwda2, Density.Posterior.Compartment.Speckles = (wwda2$Posterior.Compartment.Speckles / wwda2$Posterior.Compartment.Area))
-                wwda2 <- cbind(wwda2, Ratio.Speckle.Density.Anterior.vs.Posterior = (wwda2$Density.Anterior.Compartment.Speckles/ wwda2$Density.Posterior.Compartment.Speckles))
-            },
-            #  ... but if an error occurs, tell me what happened:
-            error=function(error_message) {
-                message("no speckle half and half")
-                return(NA)
-            }
-        )
-        
-        tryCatch(
-            # Add fluorescence channel 1 for non half and halfs
-            {
-                wwda2 <- cbind(wwda2, Pouch.Fluorescence.Channel1 = tapply(wwda$Pouch.Area.Mean.Grey.Value.ch1 , wwda$Image , mean))
-            },
-            #  ... but if an error occurs, tell me what happened:
-            error=function(error_message) {
-                message("no fluorescence 1")
-                return(NA)
-            }
-        )
-        
-        
-        tryCatch(
-            # Add fluorescence channel 1 for half and halfs
-            {
-                wwda2 <- cbind(wwda2, Anterior.Compartment.Fluorescence.Channel1 = tapply(wwda$Anterior.Compartment.Mean.Grey.Value.ch1 , wwda$Image , mean))
-                wwda2 <- cbind(wwda2, Posterior.Compartment.Fluorescence.Channel1 = tapply(wwda$Posterior.Mean.Grey.Value.ch1 , wwda$Image , mean))
-                wwda2 <- cbind(wwda2, Ratio.Fluorescence.Anterior.vs.Posterior.Channel1 = (wwda2$Anterior.Compartment.Fluorescence.Channel1 / wwda2$Posterior.Compartment.Fluorescence.Channel1))
-            },
-            #  ... but if an error occurs, tell me what happened:
-            error=function(error_message) {
-                message("no fluorescence 1 half and half")
-                return(NA)
-            }
-        )
-        
-        tryCatch(
-            # Add fluorescence channel 2 for non half and halfs
-            {
-                wwda2 <- cbind(wwda2, Pouch.Fluorescence.Channel2 = tapply(wwda$Pouch.Area.Mean.Grey.Value.ch2 , wwda$Image , mean))
-                
-            },
-            #  ... but if an error occurs, tell me what happened:
-            error=function(error_message) {
-                message("no fluorescence 2")
-                return(NA)
-            }
-        )
-        
-        tryCatch(
-            # Add fluorescence channel 2 for half and halfs
-            {
-                wwda2 <- cbind(wwda2, Anterior.Compartment.Fluorescence.Channel2 = tapply(wwda$Anterior.Compartment.Mean.Grey.Value.ch2 , wwda$Image , mean))
-                wwda2 <- cbind(wwda2, Posterior.Compartment.Fluorescence.Channel2 = tapply(wwda$Posterior.Mean.Grey.Value , wwda$Image , mean))
-                wwda2 <- cbind(wwda2, Ratio.Fluorescence.Anterior.vs.Posterior.Channel2 = (wwda2$Anterior.Compartment.Fluorescence.Channel2 / wwda2$Posterior.Compartment.Fluorescence.Channel2))
-            },
-            #  ... but if an error occurs, tell me what happened:
-            error=function(error_message) {
-                message("no fluorescence 2 half and half")
-                return(NA)
-            }
-        )
-        
-        #Get rid of empty values
-        data_subset <- wwda2[ , c("File")]
-        wwda2 <- wwda2[complete.cases(data_subset), ]
-        
-        #Back up data as reactiva values
-        wwda2 <- data.frame(wwda2)
-        wwda2<-wwda2[order(wwda2$GeneWeek), ]
-        values$wwda2<-wwda2
-        output$contents <- renderTable(values$wwda2)
-        
-        #Extract header names for the user to select what to analyze
-        wwda2sub <- subset(wwda2, select = -c(File, Image, GeneName, week, GeneWeek))
-        values$choices <- colnames(wwda2sub)
-        values$wwdaArchive <- wwda2
-        
-        
-    })
-    
-    
-    
-    
-    
     
     ###################################################################################################
     ############################### This is where all the code for the 'Generate Plots' button is#############
@@ -1230,47 +1119,165 @@ server <- function(input, output) {
     
     regressionTesting <- observeEvent(input$goReg, {
         
-    
-        tryCatch({
+      output$regressionData<- renderTable(data.frame())
+      output$chiSquaredHeader <-renderText(" ")
+      output$regressionChiSquare <- renderTable(data.frame())
+      output$predicted.data.plot <- renderPlot(ggplot())
+      output$regressionSummary<-renderPrint("")
+      output$Rsquared <-renderPrint("")
+      
+       tryCatch({
             # Attempt to run regression analysis
             
             nullVal <- input$regressionParameter1
             
+            
+            
             #Get all our data
             logRegData <- values$wwda2
+            logRegData <- logRegData[order(logRegData$GeneName, logRegData$week), ]
+            
+            
             
             #Subset our data based on user specified factors
             factors <- input$factorCheckboxes
-
             
+      
             #Conver characters to factors and get rid of 1 level factors
-            logRegDataSub <- logRegData[ , as.numeric(factors)]
+            logRegDataSub <- logRegData[ , as.numeric(factors), drop=FALSE]
+          
             logRegDataSub[sapply(logRegDataSub, is.character)] <- lapply(logRegDataSub[sapply(logRegDataSub, is.character)], 
                                                                          as.factor)
+       
             logRegDataSub <- logRegDataSub[, sapply(logRegDataSub, nlevels) != 1]
-            
+
             if (input$linkFunction == "Logistic") {
                 
                 #Run our logistic regression
                 posVal <- input$regressionParameter2
                 regression <- glm(cbind(logRegData[[posVal]], logRegData[[nullVal]])~. , family = binomial(link="logit"), data=logRegDataSub, na.action = na.omit)
                 
-                r2e <- nagelkerke(regression, restrictNobs = TRUE)
-                output$Rsquared <-renderPrint(r2e)
-                
-                predicted.data <- data.frame(
-                  probability.predicted = regression$fitted.values,
-                  probability.observed = logRegData[[posVal]] / (logRegData[[nullVal]] + logRegData[[posVal]])
-                )
-                
-                
-                predicted.data.plot <- ggplot(data=predicted.data, aes(x=probability.observed, y=probability.predicted))+geom_point()+geom_smooth(method='lm', formula= y~x) + theme_tufte() +ggtitle("Predicted probability vs. observed probability")
+                tryCatch({
+                  regOutput <- summary(regression)
+                  regOutput <-regOutput$coefficients
+              
+                  counter <- 2
+                  logOddsVec <- c(" ", " ", " ")
+                  
+                  while (counter <= nrow(regOutput)){
+                    
+                    logOddsCI <- exp(regOutput[counter,1] + qnorm(c(0.5,0.25,0.975)) * regOutput[counter,2])
+                    logOddsVec <- rbind(logOddsVec, logOddsCI)
+                    counter <- counter + 1
+                  }
 
+                  
+                  colnames(logOddsVec) <- c("Odds Ratio", "Conf. Int. Lower", "Conf. Int. Upper")
+
+                  regOutput <- cbind(regOutput, logOddsVec)
+                  output$regressionData <- renderTable(regOutput, rownames=TRUE, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+                },
+                # Unable to generate regression plot
+                error=function(error_message) {
+                  message("Unable to generate regression table")
+                  return(NA)
+                }
+                )
+               
+            
+                  tryCatch({
+                    r2e <- nagelkerke(regression, restrictNobs = TRUE)
+                    output$Rsquared <-renderPrint(r2e)
+                  },
+                  # Unable to run r-squared
+                  error=function(error_message) {
+                    message("Unable to run r-squared")
+                    return(NA)
+                  }
+                  )
+                  
+                  tryCatch({
                 
+                    predicted.data <- data.frame(
+                      probability.predicted = regression$fitted.values,
+                      probability.observed = logRegData[[posVal]] / (logRegData[[nullVal]] + logRegData[[posVal]])
+                    )
+                    predicted.data.plot <- ggplot(data=predicted.data, aes(x=probability.observed, y=probability.predicted))+geom_point()+geom_smooth(method='lm', formula= y~x) + theme_tufte() +ggtitle("Predicted probability vs. observed probability")
+                    output$predicted.data.plot <- renderPlot(predicted.data.plot)
+                    },
+                    # Unable to generate regression plot
+                    error=function(error_message) {
+                        message("Unable to generate regression plot")
+                        return(NA)
+                    }
+                    )
                 
             } else if (input$linkFunction == "Poisson"){
                 regression <- glm(logRegData[[nullVal]]~., family="poisson"(link="log"), data=logRegDataSub, na.action = na.omit )
                 
+
+                tryCatch({
+                  
+                  #Calculate a robust standard error after Cameron and Trivedi (2009)
+                  cov.regression <- vcovHC(regression, type="HC0")
+                  std.err <- sqrt(diag(cov.regression))
+                  r.est <- cbind(Estimate= coef(regression), "Robust Std. Err." = std.err,
+                                 "p.value" = 2 * pnorm(abs(coef(regression)/std.err), lower.tail=FALSE),
+                                 
+                                 "Conf. Int. Lower" = coef(regression) - 1.96 * std.err,
+                                 "Conf. Int. Upper" = coef(regression) + 1.96 * std.err)
+                  
+                  
+                  
+                  chiSquareTest <- with(regression, cbind(residual.deviance = deviance, deg.of.freedom = df.residual,
+                                 p.value = pchisq(deviance, df.residual, lower.tail=FALSE)))
+                  
+                  
+                  
+                  output$chiSquaredHeader <- renderText("Goodness-of-fit chi squared test")
+                  output$regressionChiSquare <- renderTable(chiSquareTest, rownames=TRUE, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+                  
+                  counter <- 1
+                  formList <- c()
+                  while (counter <= nrow(r.est)){
+                    formList <- c(formList, as.formula(paste(" ~ exp(x", toString(counter), ")", sep="")))
+                    counter <- counter + 1
+                  }
+                  formList <- as.list(formList)
+                
+                  
+                  s <- deltamethod(formList, coef(regression), cov.regression)
+                
+                  
+                  
+                  ## exponentiate old estimates dropping the p values
+                  rexp.est <- exp(r.est[, -3])
+                  
+                  ## replace SEs with estimates for exponentiated coefficients
+                  rexp.est[, "Robust Std. Err."] <- s
+                  colnames(rexp.est) <- c("Incident Rate Ratio", "IRR Robust Std. Err", "IRR Conf. Int. Lower", "IRR Conf. Int. Upper")
+                  r.est <- cbind(r.est, rexp.est)
+                  
+                  output$regressionData <- renderTable(r.est, rownames=TRUE, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+                },
+                # Unable to generate regression plot
+                error=function(error_message) {
+                  message("Unable to generate regression table")
+                  return(NA)
+                }
+                )
+                
+                
+                tryCatch({
+                  r2e <- nagelkerke(regression, restrictNobs = TRUE)
+                  output$Rsquared <-renderPrint(r2e)
+                },
+                # Unable to run r-squared
+                error=function(error_message) {
+                  message("Unable to run r-squared")
+                  return(NA)
+                }
+                )
  
                 predicted.data <- data.frame(
                   value.predicted = regression$fitted.values,
@@ -1278,82 +1285,38 @@ server <- function(input, output) {
                 )
                 
                 predicted.data.plot <- ggplot(data=predicted.data, aes(x=value.observed, y=value.predicted))+geom_point()+geom_smooth(method='lm', formula= y~x) + theme_tufte() +ggtitle("Predicted probability vs. observed probability")
-            
+                output$predicted.data.plot <- renderPlot(predicted.data.plot)
                 } else {
                   
                   #regression <- glm(logRegData[[nullVal]]~., family = "gaussian"(link="identity"),  data=logRegDataSub, na.action = na.omit )
                   regression <- lm(logRegData[[nullVal]]~.,  data=logRegDataSub, na.action = na.omit )
-                  print(regression)
-                  predicted.data <- data.frame(
-                    value.predicted = regression$fitted.values,
-                    value.observed = logRegData[[nullVal]]
-                  )
                   
-                  predicted.data.plot <- ggplot(data=predicted.data, aes(x=value.observed, y=value.predicted))+geom_point()+geom_smooth(method='lm', formula= y~x) + theme_tufte() +ggtitle("Predicted probability vs. observed probability")
-                               
+            
+                  
+                  tryCatch({    
+                      predicted.data <- data.frame(
+                        value.predicted = regression$fitted.values,
+                        value.observed = logRegData[[nullVal]]
+                      )
+                      
+                      predicted.data.plot <- ggplot(data=predicted.data, aes(x=value.observed, y=value.predicted))+geom_point()+geom_smooth(method='lm', formula= y~x) + theme_tufte() +ggtitle("Predicted probability vs. observed probability")
+                      output$predicted.data.plot <- renderPlot(predicted.data.plot) 
+                      },
+                  
+                  error=function(error_message) {
+                    message("Unable to make predictions plot")
+                    return(NA)
+                  }
+                 )      
                   
               }
             
             
-            output$predicted.data.plot <- renderPlot(predicted.data.plot)  
+             
             
             
             logSum <- summary(regression)
             output$regressionSummary <- renderPrint(logSum)
-            
-            
-            # logAnova<- anova(regression, test = "Chisq")
-            # print (logAnova)
-            
-            
-            
-            # anovaComp <- anova(logRegression, logRegressionSS, test = "Chisq")
-            # print (anovaComp)
-            
-            
-            
-            # Conditions <- unique(values$wwda2$GeneWeek)
-            # condlist <- c()
-            # modlist <- c()
-            # formlist <- c()
-            # r2list <- c()
-            
-            # yCond <- paste("values$wwda2$", input$plotterpaired, sep = "")
-            # xCond <- paste("values$wwda2$", input$plotter, sep = "")
-            # form <- paste(yCond, xCond, sep=" ~ ")
-            # formAnc <- paste(form, " * GeneWeek", sep = "")
-            # form <- as.formula(form)
-            
-            
-            
-            #Make linear models for each genotype
-            # for (k in Conditions){
-            #   weekData <- values$wwda2 %>% filter(GeneWeek == k)
-            #   mod <- lm(form)
-            #   condlist <- rbind(condlist, k)
-            #   intercept<- as.character(mod$coefficients[1])
-            #   slope <- as.character(mod$coefficients[2])
-            #   formOut <- paste(input$plotterpaired, "=", intercept, "+", slope, "*", input$plotter, sep = " ")
-            #   formlist <- rbind(formlist, formOut)
-            #   r2list <- rbind(r2list, summary(mod)$r.squared)
-            #   print(summary(mod)$r.squared)
-            #   modlist <- rbind(modlist, mod)
-            # }
-            # y <- as.vector(values$wwda2[input$plotterpaired])
-            # x <- as.vector(values$wwda2[input$plotter])
-            # z <- as.vector(values$wwda2$GeneWeek)
-            # 
-            # colnames(x) <- NULL
-            # colnames(y) <- NULL
-            # colnames(z) <- NULL
-            
-            #dats <- data.frame( xV = x, yV = y, zV = z)
-            #mod1 <- lm(yV ~ xV, data= dats)
-            #mod2 <- lm(yV ~ xV * zV, data= dats)
-            #ancova <- anova(mod1, mod2)
-            #print (ancova)
-            #print (modlist)
-            
             
             
         },
@@ -1376,13 +1339,13 @@ server <- function(input, output) {
         
                 
         #Reset all our outputs so we don't get confused
-        output$statsTable <- renderTable(data.frame())
+        output$statsTable <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
         output$statsHeader <- renderText("")
-        output$normality <- renderTable(data.frame())
-        output$normality2 <- renderTable(data.frame())
+        output$normality <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+        output$normality2 <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
         output$normalityHeader <- renderText("")
         output$normalityHeader2 <- renderText("")
-        output$fligner <- renderTable(data.frame())
+        output$fligner <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
         output$leveneHeader <- renderText("")
         output$plotso <- renderPlot(ggplot())
         output$plotso2 <- renderPlot(ggplot())
@@ -1398,7 +1361,7 @@ server <- function(input, output) {
             excluder <- paste("excludedData$", input$excludeChoice, input$excludeOperator,input$excludeValue, sep = "")
             output$Z <-renderPrint(excluder)
             values$wwda2 <- excludedData[eval(parse(text=excluder)),]
-            output$contents <- renderTable(values$wwda2)
+            output$contents <- renderTable(values$wwda2,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
             
         } else { values$wwda2<- values$wwdaArchive }
         
@@ -1668,14 +1631,29 @@ server <- function(input, output) {
                 }     
                 else if ((input$plotType == "Histogram" ) | (input$plotType == "Histogram w/ Density Plot")) {
                     
-                    p1<- ggplot( values$wwda2 , aes( x= values$plotData, color = GeneName,  fill = GeneName )) 
-                    if (input$bins != 1){
-                        
-                        p1 <- p1 + geom_histogram(alpha=0.6)
-                        
-                    } else {
-                        p1 <- p1 + geom_histogram( binwidth = input$bins, alpha=0.6)
-                    }
+                    p1<- ggplot( values$wwda2 , aes( x= as.numeric(values$plotData), color = GeneName,  fill = GeneName )) 
+                    
+                    
+                    tryCatch({    
+
+
+                        if (input$bins != 1){
+                            
+                            p1<- p1 + geom_histogram(alpha=0.6)
+                            
+                        } else {
+                            p1 <- p1 + geom_histogram( binwidth = input$bins, alpha=0.6)
+                        }
+                      },
+                      # Unable to make histogram
+                      error=function(error_message) {
+                        message("Unable to run r-squared")
+                        return(NA)
+                      }
+                    ) 
+                
+                    
+                    
                     if (input$plotType == "Histogram w/ Density Plot") {
                         p1 <- p1 + geom_density(alpha=0.2, color = values$colorv, fill = values$fillv)
                         
@@ -1852,7 +1830,7 @@ server <- function(input, output) {
                 pAdj <- p.adjust(fishResult, method = input$pAdj, n = length(fishResult))
                 colnames(fishResult) <- c("p-value")
                 fishResultFinal = data.frame(Genotype = deathTable$Genotype, fishResult, conf.interval.from = fishConfidence, conf.interval.to = fishConfidenceUB, p.adjusted = as.character(pAdj), p.adjustment.method = input$pAdj, odds.ratio = fishOddsRatio)
-                output$fishBC <- renderTable(fishResultFinal)  
+                output$fishBC <- renderTable(fishResultFinal, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")  
                 output$fishBCHeader <- renderText("Fisher's Exact Test for dying cells in the border vs. dying cells in the center")
             },
             # Error for unable to run fisher test
@@ -1948,7 +1926,7 @@ server <- function(input, output) {
                         #Run our p adjustment and add it to the output table
                         pAdj <- p.adjust(pVals, method = input$pAdj, n = length(pVals))
                         corrResult2 = data.frame(Group = corrGeneWeek, X = corrConditions, Y = corrConditions2, corrResult, p.adjusted = as.numeric(pAdj), p.adjustment.method = input$pAdj)
-                        output$statsTable <- renderTable(corrResult2)
+                        output$statsTable <- renderTable(corrResult2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
                         
                         pVals<-c()
                         G1 <-c()
@@ -1958,7 +1936,7 @@ server <- function(input, output) {
                         if (values$corrMethod == "pearson"){
                             for (i in setdiff(corrGeneWeek, priorGenes)){
                                 newData <- corrResult2 %>% filter(Group == i)
-                                output$contents <-renderTable(newData)
+                                output$contents <-renderTable(newData, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
                                 for (j in corrGeneWeek){
                                     newData2 <- corrResult2 %>% filter(Group == j)
                                     
@@ -1980,7 +1958,7 @@ server <- function(input, output) {
                             pAdj <- p.adjust(pVals, method = input$pAdj, n = length(pVals))
                             corrValus <- data.frame(Group1 = G1, Group2 = G2, Z.Value = zVals, p.value = pVals, p.adjusted = as.numeric(pAdj), p.adjustment.method = input$pAdj)
                             output$statsHeaderP <- renderText("Comparison of correlation between groups")
-                            output$statsTableP<-renderTable(corrValus)
+                            output$statsTableP<-renderTable(corrValus, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
                         }
                     },
                     # Error fo if unable to run correlation
@@ -2019,7 +1997,7 @@ server <- function(input, output) {
                                 if (weekname != weekname2){
                                     
                                     newData2 <- newData %>% filter((GeneWeek == weekname) | (GeneWeek == weekname2))
-                                    output$contents <- renderTable(newData2)
+                                    output$contents <- renderTable(newData2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
                                     
                                     newData.vars <- newData2 %>% select(-one_of("GeneWeek"))
                                     multiShap <- mvnormtest::mshapiro.test(t(newData.vars))
@@ -2050,7 +2028,7 @@ server <- function(input, output) {
                         pAdj <- p.adjust(pVals, method = input$pAdj, n = length(pVals))
                         corrResult2 = data.frame(Group1 = corrGeneWeek, Group2 = corrGeneWeek2, X = corrConditions, Y = corrConditions2, corrResult, p.adjusted = as.numeric(pAdj), p.adjustment.method = input$pAdj)
                 
-                        output$statsTable <- renderTable(corrResult2)
+                        output$statsTable <- renderTable(corrResult2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
                 
                     },
                     # Error for if unable to run t2
@@ -2145,7 +2123,7 @@ server <- function(input, output) {
                     #Output our results
                     colnames(flignerResult) <- c("p-value")
                     fligResult2 = data.frame(Group1 = fligConditions, Group2 = fligConditions2, flignerResult)
-                    output$fligner <- renderTable(fligResult2)
+                    output$fligner <- renderTable(fligResult2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
                     output$flignerHeader <- renderText(plottitle)
                     
                     
@@ -2194,7 +2172,7 @@ server <- function(input, output) {
                         GeneWeek = unique(values$wwda2$GeneWeek),
                         p.value = shapiroP
                     )
-                    output$normality <- renderTable(shapTable)
+                    output$normality <- renderTable(shapTable, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
                     output$normalityHeader <- renderText(plottitle) 
                     
                     
@@ -2221,7 +2199,7 @@ server <- function(input, output) {
                             GeneWeek = unique(values$wwda2$GeneWeek),
                             p.value = shapiroP
                         )
-                        output$normality2 <- renderTable(shapTable)
+                        output$normality2 <- renderTable(shapTable, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
                         output$normalityHeader2 <- renderText(input$plotterpaired)
                     }
                 },
@@ -2235,7 +2213,7 @@ server <- function(input, output) {
         
         
         
-        output$effectSizeTable <- renderTable(data.frame())
+        output$effectSizeTable <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
         output$effectSizeHeader <- renderText("")
 
         tryCatch(
@@ -2335,7 +2313,7 @@ server <- function(input, output) {
               
               effectSizeRes = data.frame(Group1 = effectConditions, Group2 = effectConditions2, method = input$effectSize, estimate = estimates, magnitude = magnitudes, conf.interval.low = confLow, conf.interval.high = confHigh)
                 
-              output$effectSizeTable <- renderTable(effectSizeRes)
+              output$effectSizeTable <- renderTable(effectSizeRes, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
               output$effectSizeHeader <- renderText(paste("Effect Size Estimates:", input$effectSize, sep=" "))
 
             },
@@ -2360,14 +2338,14 @@ server <- function(input, output) {
                         plotformula <- as.formula(plotformula)
                         values$statistics <- compare_means(plotformula, data = values$wwda2, method = values$method, p.adjust.method=input$pAdj,  group.by= "week")
 
-                        output$statsTable <- renderTable(values$statistics)  
+                        output$statsTable <- renderTable(values$statistics, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")  
                         output$statsHeader <- renderText("Statistical test:")
                     } else {
                         
                         plotformula2 <- as.formula(values$plotformula2)
                         values$statistics <- compare_means( xValues ~ Identification, data = values$pairDataStat, method = values$method, p.adjust.method=input$pAdj, group.by= "GeneWeek",  paired = TRUE)
                         output$statsHeader <- renderText("Pair-wise statistical test:")
-                        output$statsTable <- renderTable(values$statistics)  
+                        output$statsTable <- renderTable(values$statistics, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")  
                     }
                 }
                 
@@ -2447,7 +2425,7 @@ server <- function(input, output) {
                 pAdj <- p.adjust(fishResult, method = input$pAdj, n = length(fishResult))
                 colnames(fishResult) <- c("p-value")
                 fishResult2Z = data.frame(Group1 = fishConditions, Group2 = fishConditions2, fishResult, conf.interval.from = fishConfidence, conf.interval.to = fishConfidenceUB, p.adjusted = as.numeric(pAdj), p.adjustment.method = input$pAdj, odds.ratio=fishOddsRatio)
-                output$fishTable <- renderTable(fishResult2Z)  
+                output$fishTable <- renderTable(fishResult2Z, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")  
                 output$fishHeader <- renderText("Fisher's Exact Test Between Samples")
                 
             },

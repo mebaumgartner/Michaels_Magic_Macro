@@ -292,7 +292,7 @@ def script():
 							#We only all the channels from the image we are interested in at the correct timepoint and z-level and store them in an array.
 							pullArray, timeFinish, colorsOfChannels = channel_organize_and_open(indices, inPath, timeFinish, timepoint )
 							if pullArray == "Error":
-								IJ.error("Unable to load image channels! \n \n"+"This likely means that you told the macro to analyze a channel that does not exist. \n" + "For example, if your image has channels, you can't analyze channel 3. \n" + "The macro will try again on the next image. \n"+ "If this keeps happening, abort the macro by pressing 'Escape.' \n \n"+ "Sorry about all this!")
+								IJ.log("Unable to load image channels! \n \n"+"This likely means that you told the macro to analyze a channel that does not exist. \n" + "For example, if your image has channels, you can't analyze channel 3. \n" + "The macro will try again on the next image. \n"+ "If this keeps happening, abort the macro by pressing 'Escape.' \n \n"+ "Sorry about all this!")
 								break
 
 							#Z-project down to a 2D-image, if specified by user
@@ -1009,8 +1009,22 @@ def script():
 								except: IJ.saveAs(impTL, "Tiff", pathEx) 
 							
 					except:
-						errCount = errCount + 1
-						errStr = errStr + "[image:" + Title +"]"
+						try: 
+							Title = str(Title)
+						except:
+							Title = "No Title"
+						Title = str(Title)
+						if Title.endswith(".txt"):
+							IJ.log("text file skipped: "+ Title)
+						elif Title.endswith(".zip"):
+							IJ.log("zip file skipped: "+ Title)
+						elif Title.endswith(".py"):
+							IJ.log("python file skipped: "+ Title)
+						elif Title.endswith(".model"):
+							IJ.log("weka model file skipped: "+ Title)
+						else:
+							errCount = errCount + 1
+							errStr = errStr + "[image:" + Title +"]"
 						continue
 			
 			else:
@@ -1077,9 +1091,21 @@ def script():
 
 
 		except:
-			errCount = errCount + 1
-			errStr = errStr + "[file:" + names + "]"
+
+			try: 
+				Title = str(Title)
+			except:
+				Title = "No Title"
+			if Title.endswith(".txt"):
+				IJ.log("text file skipped: "+ Title)
+			elif Title.endswith(".zip"):
+				IJ.log("zip file skipped: "+ Title)
+			elif Title.endswith(".py"):
+				IJ.log("python file skipped: "+ Title)
+			elif Title.endswith(".model"):
+				IJ.log("weka model file skipped: "+ Title)
 			continue
+			
 
 
 

@@ -2,7 +2,7 @@
 # This is the caspase segmentation function
 
 
-def caspase_segmentor (imp, rm, Title, stackno, pouch, caspaseSegment, dcp1Radius, caliber, minCasSize, timepoint, excludinator, iHeight):
+def caspase_segmentor (cal, imp, rm, Title, stackno, pouch, caspaseSegment, dcp1Radius, caliber, minCasSize, timepoint, excludinator, iHeight):
 
 	
 
@@ -16,106 +16,108 @@ def caspase_segmentor (imp, rm, Title, stackno, pouch, caspaseSegment, dcp1Radiu
 	from JSF_package._misc_ import mask_confirmer
 	from inra.ijpb.morphology import Strel, Morphology, MinimaAndMaxima
 	from inra.ijpb.binary import BinaryImages
+	from ij.plugin import ImageCalculator
+	from ij.gui.Roi import getContourCentroid
+	from java.awt import Color, Rectangle
 
 	import JSF_package
 	from JSF_package._misc_ import mask_confirmer, selection_confirmer
 
+	rt = ResultsTable.getResultsTable()
+
 	
+	IJ.run("Clear Results")
+	IJ.run(imp, "Select None", "")
+	IJ.run(imp, "Measure", "")
+	Max = rt.getValue("Max", 0)
 
-	#Make sure no selections are lingering on the images
-	imp2 = imp.duplicate()
-	IJ.run(imp2, "Select None", "")
-	manager = RoiManager(True)
-
+	maskImp = IJ.createImage("woop", "8-bit black", imp.getWidth(), (iHeight+100), 1)
+	maskImp.setCalibration(cal)
+	
 	if JSF_package.configRoi.halfHalfNC == True:
 		pouch = pouch.clone()
 		pouch = pouch.or(excludinator)
-	IJ.log("Caspase particle analysis started")
-	#We run a particle analyzer function to get each segmented ROI
-	ParticleAnalyzer.setRoiManager(manager) 
-	pa = ParticleAnalyzer(ParticleAnalyzer.ADD_TO_MANAGER | ParticleAnalyzer.SHOW_NONE,Measurements.AREA,ResultsTable(), 0, minCasSize/(caliber*caliber), 0.0, 1.0)
-	pa.setHideOutputImage(True)
-	pa.analyze(imp2)
-	manager.runCommand("Deselect")
-	aROIs = manager.getSelectedRoisAsArray()
-	manager.reset()
-	IJ.log("Caspase particle analysis complete")
 
-	#We create a mask of the objects that get through our particle analysis filter
-	if aROIs:
-		for rp in aROIs:
-			imp2.setRoi(rp)
-			IJ.run(imp2, "Fill", "")
-	IJ.run(imp2, "Select None", "")
-	IJ.run(imp2, "Invert", "")
+	y = 0
 
-	imparc = imp2.duplicate()
+	newCasRois= list()
+	
+	while 1 <= Max:
 
-	#We run a 'find maxima' step to get the centroids
-	mf = MaximumFinder()
-	imp2= mf.findMaxima(imp2.getProcessor(), 10, ImageProcessor.NO_THRESHOLD, MaximumFinder.SINGLE_POINTS, True, False)
-	imp2 = ImagePlus("Found maxima", imp2)
+		IJ.run("Clear Results")
+		IJ.run(imp, "Select None", "")
+		IJ.run(imp, "Measure", "")
+		Max = rt.getValue("Max", 0)
 
-	#We confirm the image was made in the right way, then create a selection for use in making the output image. 
-	IJ.run(imp2, "Canvas Size...", "width="+str(imp2.getWidth())+" height="+str(iHeight+100)+" position=Top-Left zero")
-	mask_confirmer(iHeight + 20, imp2)
-
-	#We enlarge the point selections according to the tracking radius and make a mask
-	IJ.run(imp2, "Invert", "")
-	IJ.run(imp2, "Create Selection", "")
-
-	#Ensure something was found and the selections aren't empty:
-	checker = imp2.getRoi()
-	try:
-		checker = ShapeRoi(checker)
-		isRoi = 1
-	except:
-		isRoi = 0
-
-	if isRoi == 1:
+		if Max == 0:
+			break
+	
+		imp2 = imp.duplicate()
+		imp2.getProcessor().setThreshold(Max, Max, 0)
+		
+		IJ.run(imp2,"Convert to Mask", "")
+		IJ.run(imp2, "Canvas Size...", "width="+str(imp2.getWidth())+" height="+str(iHeight+100)+" position=Top-Left zero")
+		mask_confirmer(iHeight + 20, imp2)	
 
 		
-		IJ.run(imp2, "Enlarge...", "enlarge="+str(dcp1Radius))
-		IJ.run(imp2, "Clear", "slice")
-	
-	
-		#We run a new particle analyzer step, adding everything to the ROI manager
-		a = rm.getCount()
-		Kk = pouch.clone()
-		imp2.setRoi(Kk)
-		manager = RoiManager(True)
-		ParticleAnalyzer.setRoiManager(manager) 
-		pa = ParticleAnalyzer(ParticleAnalyzer.ADD_TO_MANAGER | ParticleAnalyzer.SHOW_NONE,Measurements.AREA,ResultsTable(), 0, 99999999999999999, 0.0, 1.0)
-		pa.setHideOutputImage(True)
-		pa.analyze(imp2)
-		manager.runCommand("Deselect")
-		aROIs = manager.getSelectedRoisAsArray()
-		manager.reset()
-		IJ.run(imp2, "Invert", "")
-		y = 1
-		blorp = list()
-	
-		#We add all non-empty ROIs to the ROI manager
-		for rp in aROIs:
-			Qq = Kk.clone()
-			rp = ShapeRoi(rp)
-			b = str(rp).find("width")
-			b = str(rp)[b+6:b+7]
-			if b == "0":
-				continue
-			yarp = rp.getLength()
-			if yarp < 5:
-				continue
-			rm.addRoi(rp)
-			T = rm.getCount() - 1
-			rm.select(T)
-			rm.runCommand("Rename", "Caspase_Z:"+str(stackno)+"_No."+str(y)+"_timepoint"+str(timepoint))
-			T = rm.getSelectedIndex()
-			blorp.extend([T])
-			y = y+1
 
-		#Now we just run back to the parent clone analysis function
-		caspaseSegment.append(blorp)
+		#Make sure no selections are lingering on the images
+		IJ.run(imp2, "Create Selection", "")
+	
+		clearRoi = ShapeRoi(imp2.getRoi())
+		imp.setRoi(clearRoi)
+		IJ.run(imp, "Clear" , "")
+
+
+		
+		
+		maskImp.setRoi(clearRoi)
+		IJ.run("Clear Results")
+		IJ.run(maskImp, "Measure", "")
+		Area = rt.getValue("Area", 0)
+
+		clearRoi, isZ = selection_confirmer(clearRoi, iHeight, maskImp)
+		checker1 = pouch.clone()
+		checker2 = clearRoi.clone()
+		checker1 = checker1.and(checker2)
+		checker1 = str(checker1)
+		
+		checker1 = str(clearRoi)
+		xVal = checker1.find("x=")
+		xVal = xVal + 2
+		yVal = checker1.find("y=")
+		yVal = yVal + 2
+		wVal = checker1.find("width=")
+		wVal = wVal+6
+		hVal = checker1.find("height=")
+		hVal = hVal+7
+
+		if checker1[xVal] == "0" and checker1[yVal] == "0" and checker1[wVal] == "0" and checker1[hVal] == "0":
+			skipper = True
+		else:
+			skipper = False
+			
+		if skipper == False:
+
+			if Area >= minCasSize:
+				y += 1
+				
+				xCoord, yCoord = getContourCentroid(clearRoi)
+				newRoi = ShapeRoi(int(xCoord), int(yCoord), Rectangle(0,0,1,1))
+				maskImp.setRoi(newRoi)
+				IJ.run(maskImp, "Enlarge...", "enlarge="+str(dcp1Radius)+ " scaled")
+				enlargedRoi = ShapeRoi(maskImp.getRoi())
+				rm.addRoi(enlargedRoi)
+				T = rm.getCount() - 1
+				rm.select(T)
+				
+				rm.runCommand("Rename", "Caspase_Z:"+str(stackno)+"_No."+str(y)+"_timepoint"+str(timepoint))
+				
+				newCasRois.extend([T])
+
+
+	#Now we just run back to the parent clone analysis function
+	caspaseSegment.append(newCasRois)
 	
 	return caspaseSegment
 
@@ -335,7 +337,8 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 
 		#Run the watershed
 		newImp = Watershed.computeWatershed(countImp,  casMask2, 4, 0, 255)
-
+		forCounts = newImp.duplicate()
+		
 		#Now we get the watershed-ed image, and put into a properly formatted binary image
 		IJ.setThreshold(newImp, -1000000000000000000000000000000.000000000, 0.000000000)
 		IJ.run(newImp, "Make Binary", "")
@@ -367,8 +370,10 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 		IJ.run(imp, "Fill", "")
 		cal = casImp.getCalibration()
 		caliber = cal.pixelHeight
-		dcp1Radius = dcp1Radius/caliber
-		caspaseSegment = caspase_segmentor (imp, rm, Title, stackno, pouch, caspaseSegment,  dcp1Radius, caliber, minCasSize, timepoint, excludinator, iHeight)
+		
+
+
+		caspaseSegment = caspase_segmentor (cal, forCounts, rm, Title, stackno, pouch, caspaseSegment,  dcp1Radius, caliber, minCasSize, timepoint, excludinator, iHeight)
 
 
 	#We create a selection from the mask and extract the ROI

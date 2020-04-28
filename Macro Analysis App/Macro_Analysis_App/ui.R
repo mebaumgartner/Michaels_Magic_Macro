@@ -1,4 +1,4 @@
-list.of.packages <- c("shiny", "ggplot2", "RColorBrewer", "ggpubr", "markdown", "ggsignif", "rhandsontable", "dplyr", "car", "magrittr", "ICSNP", "mvnormtest", "psych", "corrplot", "rcompanion", "stringr", "effsize", "ggthemes")
+list.of.packages <- c("shiny", "ggplot2", "RColorBrewer", "ggpubr", "markdown", "ggsignif", "rhandsontable", "msm", "dplyr", "car", "magrittr", "ICSNP", "mvnormtest", "psych", "corrplot", "rcompanion", "stringr", "effsize", "sandwich", "ggthemes")
 library(data.table)
 library(ggplot2)
 library("RColorBrewer")
@@ -17,6 +17,8 @@ library(rcompanion)
 library(stringr)
 library(effsize)
 library(ggthemes)
+library(sandwich)
+library(msm)
 
 # Define UI for application
 shinyUI(
@@ -58,11 +60,10 @@ shinyUI(
                                       
                                       
                                       #clicking this button extracts the unique image names from the input images and creates an interactive table for the user to put in the genotypes and experiment numbers
-                                      h4("Step 2: Select data type and assign genotypes"),
+                                      h4("Step 2: Assign genotypes"),
                                       
-                                      selectInput("analysisType", "Select analysis to perform:", choices=c("Whole Disc Analysis", "Individual Clone Analysis", "No Clones Analysis", "Re-Load Analyzed Dataset")),
                                       actionButton("saveBtn", "Assign genotypes"),
-                                      h6("Use the Genotypes Assignment Table to specify experimental groupings in the second column and genotypes in the third column, then press 'Load Genotypes'"),
+                                      h6("Use the Genotypes Assignment Table to specify experimental groupings in the second column and genotypes in the third column, then press 'Load Genotypes.' You can skip this step if you re-load data you already analyzed"),
                                       
                                       #clicking this button launches Remi's analysis for the relevant filetype and generates an output table of processed data
                                       h4("Step 3: Analyze your data"),
@@ -152,7 +153,7 @@ shinyUI(
                                   sidebarPanel(
                                       width = 4,
                                       h4("Specify your regression parameters:"),
-                                      selectInput("linkFunction", "Select regression type:", choices = c("Logistic", "Poisson", "Linear")),
+                                      selectInput("linkFunction", "Select regression type:", choices = c("Logistic", "Linear", "Poisson" )),
                                       h6("Selecting 'logit' will run logistic regression, 'log' will run a poisson regression, and 'identity' will run a linear regression"),
                                       uiOutput("regressionSelect1"),
                                       uiOutput("regressionSelect2"),
@@ -160,9 +161,13 @@ shinyUI(
                                       actionButton("goReg", "Run regression!")
                                         ),
                                   mainPanel(
+                                          h4("Regression Results"),
+                                          tableOutput("regressionData"),
+                                          textOutput("chiSquaredHeader"),
+                                          tableOutput("regressionChiSquare"),
+                                          plotOutput("predicted.data.plot"),
                                           h4("Summary of Regression Analysis:"),
                                           verbatimTextOutput("regressionSummary"),
-                                          plotOutput("predicted.data.plot"),
                                           h4("Summary of R-squared (or pseudo R-squared) calculation:"),
                                           verbatimTextOutput("Rsquared")
                                          
