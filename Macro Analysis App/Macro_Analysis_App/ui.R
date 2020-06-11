@@ -1,4 +1,4 @@
-list.of.packages <- c("shiny", "ggplot2", "RColorBrewer", "ggpubr", "markdown", "ggsignif", "rhandsontable", "msm", "dplyr", "car", "magrittr", "ICSNP", "mvnormtest", "psych", "corrplot", "rcompanion", "stringr", "effsize", "sandwich", "ggthemes")
+list.of.packages <- c("shiny", "boot", "MASS", "car", "ggplot2", "RColorBrewer", "ggpubr", "markdown", "ggsignif", "rhandsontable", "msm", "dplyr", "car", "magrittr", "ICSNP", "mvnormtest", "psych", "corrplot", "rcompanion", "stringr", "effsize", "sandwich", "ggthemes")
 library(data.table)
 library(ggplot2)
 library("RColorBrewer")
@@ -19,6 +19,9 @@ library(effsize)
 library(ggthemes)
 library(sandwich)
 library(msm)
+library(car)
+library(MASS)
+library(boot)
 
 # Define UI for application
 shinyUI(
@@ -134,7 +137,36 @@ shinyUI(
                                       actionButton("loadBtn","Load assignments")
                                   )),
                          #This tab panel puts out he anayzed data table
-                         tabPanel("Analyzed Data Table", tableOutput("contents")),
+                         tabPanel("Analyzed Data Table", 
+                                  sidebarPanel(h4("Data operations"),
+                                               h5("Here, you can transform or perform operations on your data. The new data will be added as a new column to the table."),
+                                               uiOutput('ColumnChoice'),
+                                               selectInput("operation", "Specify operation to perform:", choices=c("+", "-", "*","/", "^", "modulus", "log")),
+                                               h5('You can perform this operation against data in another column, or using a fixed value. In the case of log transformations, the value specified below will act as the base of the logarithm'),
+                                               checkboxInput('valueOrColumn', "Compare to another column?", value=FALSE),
+                                               uiOutput('columnOrFixed'),
+                                               textInput("newTitle", "Add new data title", value="Enter title..."),
+                                               actionButton("transform", "Transform data!"),
+                                               ),
+                                               
+                                               
+                                               
+                                  mainPanel(tableOutput("contents"))
+                                  ),
+                         
+                         #Holds normality and variance tests
+                         tabPanel("Parametric Assumptions Testing", 
+                                  sidebarPanel(h4("Shapiro wilks normality test on: "),
+                                               
+                                               textOutput("normalityHeader"),
+                                               tableOutput("normality"),
+                                               
+                                               textOutput("normalityHeader2"),
+                                               tableOutput("normality2")
+                                               
+                                  ),
+                                  mainPanel(h4("Fligner-Killeen test for equivalent variances"), textOutput("leveneHeader"),
+                                            tableOutput("fligner"))),
                          
                          #This panel puts out the approximate cell counts made from approximating each cell as a cylinder of diameter 10 microns
                          tabPanel("Overall Fisher Tests", h4("Number of apoptotic and non-apoptotic cells in clone border vs clone center across all samples"), tableOutput("deathTable"),
@@ -153,7 +185,7 @@ shinyUI(
                                   sidebarPanel(
                                       width = 4,
                                       h4("Specify your regression parameters:"),
-                                      selectInput("linkFunction", "Select regression type:", choices = c("Logistic", "Linear", "Poisson" )),
+                                      selectInput("linkFunction", "Select regression type:", choices = c("Logistic", "Linear", "Poisson", "Negative Binomial" )),
                                       h6("Selecting 'logit' will run logistic regression, 'log' will run a poisson regression, and 'identity' will run a linear regression"),
                                       uiOutput("regressionSelect1"),
                                       uiOutput("regressionSelect2"),
@@ -165,7 +197,14 @@ shinyUI(
                                           tableOutput("regressionData"),
                                           textOutput("chiSquaredHeader"),
                                           tableOutput("regressionChiSquare"),
+                                          textOutput("NCVheader"),
+                                          tableOutput("meanVarTable"),
+                                          verbatimTextOutput("NCVtable"),
+                                          textOutput("DWTheader"),
+                                          verbatimTextOutput("DWTtable"),
                                           plotOutput("predicted.data.plot"),
+                                          textOutput("residualsPlotHeader"),
+                                          plotOutput("residualsPlot"),
                                           h4("Summary of Regression Analysis:"),
                                           verbatimTextOutput("regressionSummary"),
                                           h4("Summary of R-squared (or pseudo R-squared) calculation:"),
@@ -176,19 +215,7 @@ shinyUI(
                                         
                                   ),
                          
-                         #Holds normality and variance tests
-                         tabPanel("Parametric Assumptions Testing", 
-                                  sidebarPanel(h4("Shapiro wilks normality test on: "),
-                                               
-                                               textOutput("normalityHeader"),
-                                               tableOutput("normality"),
-                                               
-                                               textOutput("normalityHeader2"),
-                                               tableOutput("normality2")
-                                               
-                                  ),
-                                  mainPanel(h4("Fligner-Killeen test for equivalent variances"), textOutput("leveneHeader"),
-                                            tableOutput("fligner"))),
+                         
                          
                          
                          tabPanel("Customize plot",

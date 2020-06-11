@@ -31,6 +31,8 @@ server <- function(input, output) {
     values$genAssign <-data.frame()
     values$statistics <- data.frame()
     values$loaded <- 0
+    values$addCount <- 0
+    values$refString <- ""
     
     output$plotso <- renderPlot(ggplot())
     output$plotso2 <- renderPlot(ggplot())
@@ -114,7 +116,7 @@ server <- function(input, output) {
         selectInput('plotterpaired', 'Select paired dataset', mydata2)
     })
     
-    #input$excludeChoice, input$excludeOperator,input$excludeValue
+    #Render User Input Widgets for if the user wants to exclude a datapoint
     
     output$exclusioninput1 = renderUI({
         validate(
@@ -138,6 +140,21 @@ server <- function(input, output) {
         numericInput('excludeValue', 'Specify comparison value:', 0)
     })
     
+    #Render User Input widgets for if the user wants to perform a data operation
+    output$ColumnChoice = renderUI({
+      myChoices = values$choices
+      selectInput('dataToOperate', 'Select data to transform', myChoices)
+    })
+    
+    output$columnOrFixed = renderUI({
+      if (input$valueOrColumn == TRUE){
+        myChoices2 = values$choices
+        selectInput('operatorColumn', 'Select second dataset', myChoices2)
+      } else {
+        numericInput('operatorValue', 'Input operator value', value = 1)
+      }
+    })
+    
     valuesRestore <- values
     
     
@@ -147,24 +164,25 @@ server <- function(input, output) {
     
     observeEvent(input$saveBtn, {
       
-      
+        randoTable <- TRUE      
         wda <- data.frame(
             Image.Name = c(1,2,3,4,5)
             
         )
         
+        
+        
         tryCatch(
-            # This is what I want to do...
+
             {
                 values <- valuesRestore
                 wda <- rbindlist(lapply(input$csvs$datapath, read.csv), use.names = TRUE, fill = TRUE)
                 Image.Name <- unique(wda$Image.Name)
                 values$genAssign<- data.frame(Image.Name)
-                
                 values$genAssign$week <- "1"
                 values$genAssign$Gene.Name <- "1"
             },
-            # ... but if an error occurs, tell me what happened: 
+            
             error=function(error_message) {
                 message("No data file loaded")
                 return(NA)
@@ -175,20 +193,40 @@ server <- function(input, output) {
         
         
         tryCatch(
-            # This is what I want to do...
+
             {
                 wda <- rbindlist(lapply(input$csvs$datapath, read.csv), use.names = TRUE, fill = TRUE)
                 Image <- unique(wda$Image)
                 values$genAssign<- data.frame(Image)
                 values$genAssign$week <- "Specify experiment/grouping"
                 values$genAssign$Gene.Name <- "Specify genotype"
+                randoTable <- FALSE
             },
-            # ... but if an error occurs, tell me what happened: 
+
             error=function(error_message) {
-                message("No data file loaded")
+                message("Couldn't create genotype assignment table")
                 return(NA)
             }
         )
+        
+        tryCatch(
+          
+          {
+            if (randoTable == TRUE){
+              wda <- rbindlist(lapply(input$csvs$datapath, read.csv), use.names = TRUE, fill = TRUE)
+              values$genAssign<- data.frame(wda)
+            }
+            
+          },
+          
+          error=function(error_message) {
+            message("Couldn't create load unformatted data table")
+            return(NA)
+          }
+        )
+  
+        values$randoTable <- randoTable
+        
         
         
     })
@@ -201,6 +239,11 @@ server <- function(input, output) {
         values$control <- toString(input$reference)
         values$genAssign <- hot_to_r(input$table)
     })
+    
+    
+    
+
+    
     
     
     ############################################################################################################################
@@ -243,18 +286,20 @@ server <- function(input, output) {
         for (i in colnames(wwda2)){
           if(grepl("CloneID", i, fixed = TRUE)) {
             okayGo <- TRUE
+            values$analysisType <- "cloneTable"
           
           }
           
           if(grepl("Pouch.Volume.", i, fixed = TRUE)) {
-           
+            values$analysisType <- "wingDisc"
             okayGo <- TRUE
             }
         }
         
         #Here we make sure the correct steps have been taken (i.e. right buttons pressed, right files uploaded)
         validate(
-            need(okayGo == TRUE, "Please load a previously analyzed data table")
+            need(okayGo == TRUE, "Please load a previously analyzed data table"),
+            need(values$randoTable == FALSE, "Please load a previously analyzed data table")
         )
 
         wwda2<- as.data.frame(wwda2)
@@ -364,6 +409,41 @@ server <- function(input, output) {
     
     
     ############################################################################################################################
+    ##################################################### Load random data table ###################################################
+    ############################################################################################################################
+    analysis <- observeEvent(input$go, {
+      
+      tryCatch({
+        
+        validate(
+          need(values$randoTable == TRUE, "Please load an unformatted, non macro table")
+        )
+      
+        #Load random table without any modifications
+        wwda2 <- values$genAssign
+  
+        #Output data into analyzed data tab
+        output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+        values$rawChoices <- colnames(wwda2)
+        values$choices <- colnames(wwda2)
+        
+        #Backup data in reactive values
+        values$wwda2 <- wwda2
+        values$wwdaArchive <- wwda2
+      
+      },
+      error=function(error_message) {
+        message("Unable to analyze unformatted table")
+        return(NA)
+      }
+      )
+      
+      
+      
+    })  
+    
+    
+    ############################################################################################################################
     ##################################################### Clone Tracking Analysis ###################################################
     ############################################################################################################################
     
@@ -372,7 +452,7 @@ server <- function(input, output) {
         
         
       tryCatch(
-        {    
+        {
         
         
         #Read dataset csv files
@@ -383,6 +463,8 @@ server <- function(input, output) {
         for (i in colnames(cta)){
           if(grepl("Clone.ID", i, fixed = TRUE)) {okayGo <- TRUE}
         }
+        
+        values$analysisType <- "cloneTable"
     
         
         #Only allow analysis to proceed if the correct filetype has been loaded and genotype assignments have been made
@@ -390,14 +472,17 @@ server <- function(input, output) {
         validate(
             need(cta$Clone.ID, "Please load a clone tracking analysis file and assign genotypes"),
             need(okayGo == TRUE, "Please load a clone tracking analysis file and assign genotypes"),
-            need(values$loaded == 1, "Load genotype assignments first!")
+            need(values$loaded == 1, "Load genotype assignments first!"),
+            need(values$randoTable == FALSE, "Please load a previously analyzed data table")
         )
         
         #Read genotype assignment csv file
         trad  <- values$genAssign
         
         #Merge the CSV file input with the genotype assignments
+        colnames(trad) <- c("Image.Name", "week", "Gene.Name")
         ccta <- merge(x = cta, y = trad)
+
         
         #Make a unique identifier for a given clone at a given z level
         ccta2 <- cbind( CloneZName = paste(ccta$Image.Name ,ccta$week, ccta$Clone.ID , ccta$Z.level) , ccta )
@@ -610,9 +695,9 @@ server <- function(input, output) {
         
    
     },
-    # ... but if an error occurs, tell me what happened: 
+    # ... but if an error occurs, tell me what happened:
     error=function(error_message) {
-      message("no caspase")
+      message("Unable to analyze clone tracking data")
       return(NA)
     }
     )
@@ -626,7 +711,7 @@ server <- function(input, output) {
     analysis <- observeEvent(input$go, {
         
       tryCatch(
-        {       
+       {
         #Read genotype assignment csv file to the variable 'trad'
         trad  <- values$genAssign
         
@@ -653,8 +738,11 @@ server <- function(input, output) {
         validate(
             need(wda$File, "Please load a whole disc analysis file and assign genotypes"),
             need(okayGo == TRUE, "Please load a whole disc analysis file and assign genotypes"),
-            need(values$loaded == 1, "Load genotype assignments first!")
+            need(values$loaded == 1, "Load genotype assignments first!"),
+            need(values$randoTable == FALSE, "Please load a previously analyzed data table")
         )
+        
+        values$analysisType <- "wingDisc"
        
         
         colnames(trad) <- c("Image Name", "week", "Gene.Name")
@@ -738,10 +826,18 @@ server <- function(input, output) {
                 Not.Clone.Volume = tapply(wwda$Pouch.Area , wwda$Image.Name, sum) - tapply(wwda$Clone.Area , wwda$Image.Name, sum),
                 
                 Number.of.Z.Slices = tapply(wwda$Z.level, list(wwda$Image.Name), max) - tapply(wwda$Z.level, list(wwda$Image.Name), min) + 1,
-                Percent.Clone.Coverage.of.Pouch = tapply(wwda$Clone.Area , wwda$Image.Name , sum)*100 / tapply(wwda$Pouch.Area , wwda$Image.Name , sum)
+                Percent.Clone.Coverage.of.Pouch = tapply(wwda$Clone.Area , wwda$Image.Name , sum)*100 / tapply(wwda$Pouch.Area , wwda$Image.Name , sum),
+                Border.Coverage.of.Clones = tapply(wwda$Border.Area , wwda$Image.Name , sum)*100/tapply(wwda$Clone.Area , wwda$Image.Name , sum)
+                
+                
                 
             )
             
+            
+            wwda2 <- cbind(wwda2, Estimated.Total.Cell.Count = round(exp(5.613 + wwda2$Pouch.Volume*6.519*10^(-6) + wwda2$Clone.Volume*5.35*10^(-2) + wwda2$Clone.Center.Volume*-5.351*10^(-2) + wwda2$Clone.Border.Volume*-5.351*10^(-2) +  wwda2$Number.of.Z.Slices*-5.702*10^(-2) + wwda2$Percent.Clone.Coverage.of.Pouch*4.643*10^(-2))))
+            wwda2 <- cbind(wwda2, Estimated.Border.Cell.Count = round(exp(5.80732 + wwda2$Pouch.Volume*4.504*10^(-6) + wwda2$Clone.Volume*1.706*10^(-2) + wwda2$Clone.Center.Volume*-1.707*10^(-2) + wwda2$Clone.Border.Volume*-1.706*10^(-2) + wwda2$Number.of.Z.Slices*-4.848*10^(-2) + wwda2$Percent.Clone.Coverage.of.Pouch*3.215*10^(-2))))
+            wwda2 <- cbind(wwda2, Estimated.Center.Cell.Count = wwda2$Estimated.Total.Cell.Count - wwda2$Estimated.Border.Cell.Count)
+           
             #Here we add the individual cell counts information to the table, if applicable
 
             tryCatch(
@@ -788,11 +884,11 @@ server <- function(input, output) {
             TrueCasCounts <- 0
             #This variable tracks whether or not we were able to do individual cell counts or not
             TrueNonCasCounts <- 0    
-            #Add the caspase information to the table, if applicable
+            # #Add the caspase information to the table, if applicable
             tryCatch(
                 # We attempt to analyze the caspase coverage data. If it exists, it will be added to the table. Otherwise, we skip it.
                 {
-                  
+
                   if("Caspase.Area" %in% colnames(wwda))
                   {
                     wwda2 <- cbind(wwda2, Total.Caspase.Volume = tapply(wwda$Caspase.Area , wwda$Image.Name , sum))
@@ -852,7 +948,7 @@ server <- function(input, output) {
                             return(NA)
                         }
                     )
-                    
+
                 },
                 error=function(error_message) {
                     message("no caspase")
@@ -863,13 +959,13 @@ server <- function(input, output) {
             tryCatch(
                 # This is where we add the fluorescence data to the table, if applicable
                 {
-                  if("Clone.Fluorescence" %in% colnames(wwda))
+                  if("Clone.Fluorescence.IntDen" %in% colnames(wwda))
                   {
                  
-                    wwda2 <- cbind(wwda2, Clone.Fluorescence = tapply(wwda$Clone.Fluorescence , wwda$Image.Name , sum) / tapply(wwda$Clone.Area , wwda$Image.Name , sum))
-                    wwda2 <- cbind(wwda2, Center.Fluorescence = tapply(wwda$Center.Fluorescence , wwda$Image.Name , sum)/ tapply(wwda$Center.Area , wwda$Image.Name , sum))
-                    wwda2 <- cbind(wwda2, Border.Fluorescence = tapply(wwda$Border.Fluorescence, wwda$Image.Name , sum) / tapply(wwda$Border.Area , wwda$Image.Name , sum))
-                    wwda2 <- cbind(wwda2, Not.Clone.Fluorescence = tapply(wwda$Not.Clone.Fluorescence , wwda$Image.Name , sum) / tapply(wwda$Not.Clones.Area, wwda$Image.Name , sum))
+                    wwda2 <- cbind(wwda2, Clone.Fluorescence = tapply(wwda$Clone.Fluorescence.IntDen , wwda$Image.Name , sum) / tapply(wwda$Clone.Area , wwda$Image.Name , sum))
+                    wwda2 <- cbind(wwda2, Center.Fluorescence = tapply(wwda$Center.Fluorescence.IntDen , wwda$Image.Name , sum)/ tapply(wwda$Center.Area , wwda$Image.Name , sum))
+                    wwda2 <- cbind(wwda2, Border.Fluorescence = tapply(wwda$Border.Fluorescence.IntDen, wwda$Image.Name , sum) / tapply(wwda$Border.Area , wwda$Image.Name , sum))
+                    wwda2 <- cbind(wwda2, Not.Clone.Fluorescence = tapply(wwda$Not.Clone.Fluorescence.IntDen , wwda$Image.Name , sum) / tapply(wwda$Not.Clones.Area, wwda$Image.Name , sum))
                     
                     wwda2 <- cbind(wwda2, Ratio.Fluorescence.Clones.vs.Not.Clones = wwda2$Clone.Fluorescence / wwda2$Not.Clone.Fluorescence)
                     wwda2 <- cbind(wwda2, Ratio.Fluorescence.Border.vs.Center = wwda2$Border.Fluorescence / wwda2$Center.Fluorescence)
@@ -885,13 +981,13 @@ server <- function(input, output) {
             tryCatch(
                 # This is where we add the speckle data
                 {
-                  if("X.Speckles.in.Clones" %in% colnames(wwda))
+                  if("X.Speckles.in.clones" %in% colnames(wwda))
                   {
-                    
+                   
                     wwda2 <- cbind(wwda2, Density.of.Speckles.in.Clones = tapply(wwda$X.Speckles.in.clones , wwda$Image.Name , sum) / tapply(wwda$Clone.Area , wwda$Image.Name , sum))
                     wwda2 <- cbind(wwda2, Density.of.Speckles.in.Border = tapply(wwda$X.Speckles.in.border , wwda$Image.Name , sum) / tapply(wwda$Border.Area , wwda$Image.Name , sum))
                     wwda2 <- cbind(wwda2, Density.of.Speckles.in.Center = tapply(wwda$X.Speckles.in.Center , wwda$Image.Name , sum) / tapply(wwda$Center.Area , wwda$Image.Name , sum))
-                    wwda2 <- cbind(wwda2, Density.of.Speckles.in.Not.Clones = tapply(wwda$X.Speckles.in.Not.Clones , wwda$Image.Name , sum) / tapply(wwda$Not.Clone.Volume, wwda$Image.Name , sum))
+                    wwda2 <- cbind(wwda2, Density.of.Speckles.in.Not.Clones = tapply(wwda$X.Speckles.in.Not.Clones , wwda$Image.Name , sum) / tapply(wwda$Not.Clones.Area, wwda$Image.Name , sum))
                     wwda2 <- cbind(wwda2, Speckle.Density.Clones.vs.Not.Clones = wwda2$Density.of.Speckles.in.Clones / wwda2$Density.of.Speckles.in.Not.Clones)
                     wwda2 <- cbind(wwda2, Speckle.Density.Border.vs.Center = wwda2$Density.of.Speckles.in.Border / wwda2$Density.of.Speckles.in.Center)
                     
@@ -926,7 +1022,7 @@ server <- function(input, output) {
                     
                     
                     
-                    
+
                 },
                 error=function(error_message) {
                     message("no speckles")
@@ -1104,23 +1200,119 @@ server <- function(input, output) {
         
     
     },
-    # ... but if an error occurs, tell me what happened: 
+    # ... but if an error occurs, tell me what happened:
     error=function(error_message) {
-      message("no caspase")
+      message("Unable to run wing disc analysis")
       return(NA)
     }
     )
     
     })
     
+    
+    #####################################################################################################
+    ############################### This is where all the code for the data 'Transform Data!' button is######
+    ##################################################################################################
+  
+     transformer <- observeEvent(input$transform, {
+       
+       tryCatch(
+
+         {
+       
+         #Get the column from the data table we want to transform
+         dataToTransform <- input$dataToOperate
+         newData <- values$wwda2[[dataToTransform]]
+         
+         #If the user specified to compare this data to another column, we get that column from the data table
+         if (input$valueOrColumn == TRUE){
+  
+            operatorColumn <- input$operatorColumn
+            operatorData <- values$wwda2[[operatorColumn]]
+  
+          #Otherwise, we just get the operator value input by the user
+          } else {operatorData <- input$operatorValue}
+  
+  
+        #Get the operation specified by the user
+        operation <- input$operation
+  
+        if (operation == '+') {transformed <- newData + operatorData}
+        if (operation == '-') {transformed <- newData - operatorData}
+        if (operation == '*') {transformed <- newData * operatorData}
+        if (operation == '/') {transformed <- newData / operatorData}
+        if (operation == '^') {transformed <- newData ^ operatorData}
+        if (operation == 'modulus') {transformed <- newData %% operatorData}
+        if (operation == 'log') {transformed <- log(newData, base = operatorData)}
+         
+        #Here we make sure there are no duplicate row titles. If there are, we add a suffix
+        colTitles <- colnames(values$wwda2)
+        newTitle <- input$newTitle
+        if (newTitle %in% colTitles) {
+          if (newTitle == values$refString) {addCount <- values$addCount} else {addCount <- 0}
+          values$refString <- newTitle
+          values$addCount <- addCount + 1
+          addCount <- toString(values$addCount)
+          newTitle<- paste(newTitle, "(", addCount, ")")
+        }
+        newCol <- c(newTitle, colTitles)
+        
+        #Add the new data to the output table
+         wwda2 <- cbind(transformed, values$wwda2)
+         colnames(wwda2) <- newCol
+         
+         #Store these values for later use, and output data visually for user
+         values$wwda2 <- wwda2
+         output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+         
+         #Use the column headers to set which parameters the user can choose to analyze
+         
+         values$rawChoices <-colnames(values$wwda2)
+         values$choices <-colnames(values$wwda2)
+         tryCatch(
+           
+           {
+            wwda2sub <- subset(wwda2, select = -c(File, Image.Name, GeneName, week, GeneWeek))
+            values$choices <- colnames(wwda2sub)
+           },
+          
+          error=function(error_message) {
+            message("Unable to make wwdasub")
+            return(NA)
+          }
+         )
+         
+         values$rawChoices <-colnames(values$wwda2)
+       
+       },
+
+       error=function(error_message) {
+         message("Unable to transform data")
+         return(NA)
+       }
+       )
+
+      })
+    
+    
+    
+    
     ###################################################################################################
-    ############################### This is where all the code for the 'Generate Plots' button is#############
+    ############################### This is where all the code for the 'Regression' button is#############
     ###################################################################################################
     
     regressionTesting <- observeEvent(input$goReg, {
         
       output$regressionData<- renderTable(data.frame())
       output$chiSquaredHeader <-renderText(" ")
+      output$NCVheader <-renderText(" ")
+      output$residualsPlotHeader <-renderText(" ")
+      output$NCVtable <- NULL
+      output$DWTheader <-renderText("")
+      output$DWTtable <- NULL
+      output$residualsPlot <- NULL
+      output$meanVarTable <- NULL
+      
       output$regressionChiSquare <- renderTable(data.frame())
       output$predicted.data.plot <- renderPlot(ggplot())
       output$regressionSummary<-renderPrint("")
@@ -1143,7 +1335,7 @@ server <- function(input, output) {
             factors <- input$factorCheckboxes
             
       
-            #Conver characters to factors and get rid of 1 level factors
+            #Convert characters to factors and get rid of 1 level factors
             logRegDataSub <- logRegData[ , as.numeric(factors), drop=FALSE]
           
             logRegDataSub[sapply(logRegDataSub, is.character)] <- lapply(logRegDataSub[sapply(logRegDataSub, is.character)], 
@@ -1211,10 +1403,20 @@ server <- function(input, output) {
                         return(NA)
                     }
                     )
+                    output$residualsPlot <- renderPlot(glm.diag.plots(regression)) 
+                    output$residualsPlotHeader <- renderText("GLM Diagnostic Plots")
                 
             } else if (input$linkFunction == "Poisson"){
-                regression <- glm(logRegData[[nullVal]]~., family="poisson"(link="log"), data=logRegDataSub, na.action = na.omit )
+                meanVarTable <- data.frame(
+                  variable = nullVal,
+                  mean = mean(logRegData[[nullVal]]),
+                  variance = var(logRegData[[nullVal]])
+                )
                 
+                output$meanVarTable <- renderTable(meanVarTable, rownames=TRUE, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+                output$NCVheader <- renderText("For Poisson regression, the mean and variance should be approximately equal")
+                regression <- glm(logRegData[[nullVal]]~., family="poisson"(link="log"), data=logRegDataSub, na.action = na.omit )
+                      
 
                 tryCatch({
                   
@@ -1248,6 +1450,8 @@ server <- function(input, output) {
                   
                   s <- deltamethod(formList, coef(regression), cov.regression)
                 
+                  
+                  
                   
                   
                   ## exponentiate old estimates dropping the p values
@@ -1286,11 +1490,140 @@ server <- function(input, output) {
                 
                 predicted.data.plot <- ggplot(data=predicted.data, aes(x=value.observed, y=value.predicted))+geom_point()+geom_smooth(method='lm', formula= y~x) + theme_tufte() +ggtitle("Predicted probability vs. observed probability")
                 output$predicted.data.plot <- renderPlot(predicted.data.plot)
+                
+                output$residualsPlot <- renderPlot(glm.diag.plots(regression)) 
+                output$residualsPlotHeader <- renderText("GLM Diagnostic Plots")
+                
+            } else if (input$linkFunction == "Negative Binomial") {
+              
+              meanVarTable <- data.frame(
+                variable = nullVal,
+                mean = mean(logRegData[[nullVal]]),
+                variance = var(logRegData[[nullVal]])
+              )
+              
+              output$meanVarTable <- renderTable(meanVarTable, rownames=TRUE, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+              output$NCVheader <- renderText("For Negative regression, the data should exhibit over-dispersion")
+              regression <- glm.nb(logRegData[[nullVal]]~., data=logRegDataSub, na.action = na.omit )
+              
+              tryCatch({
+                
+                chiSquareTest <- with(regression, cbind(residual.deviance = deviance, deg.of.freedom = df.residual,
+                                                        p.value = pchisq(deviance, df.residual, lower.tail=FALSE)))
+                
+                
+                
+                output$chiSquaredHeader <- renderText("Goodness-of-fit chi squared test")
+                output$regressionChiSquare <- renderTable(chiSquareTest, rownames=TRUE, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+                
+              },
+              # Unable to generate regression plot
+              error=function(error_message) {
+                message("Unable to generate regression table")
+                return(NA)
+              }
+              )
+              
+              tryCatch({
+                regOutput <- summary(regression)
+                regOutput <-regOutput$coefficients
+                
+                ## exponentiate old estimates dropping the p values
+                est <- regOutput[,1]
+                est <- exp(est)
+                regOutput <- cbind(regOutput, "Incident Rate Ratio" = est)
+                 
+                output$regressionData <- renderTable(regOutput, rownames=TRUE, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+              },
+              # Unable to generate regression plot
+              error=function(error_message) {
+                message("Unable to generate regression table")
+                return(NA)
+              }
+              )
+              
+              
+              tryCatch({
+                r2e <- nagelkerke(regression, restrictNobs = TRUE)
+                output$Rsquared <-renderPrint(r2e)
+              },
+              # Unable to run r-squared
+              error=function(error_message) {
+                message("Unable to run r-squared")
+                return(NA)
+              }
+              )
+              tryCatch({
+              predicted.data <- data.frame(
+                value.predicted = regression$fitted.values,
+                value.observed = logRegData[[nullVal]]
+              )
+              
+              predicted.data.plot <- ggplot(data=predicted.data, aes(x=value.observed, y=value.predicted))+geom_point()+geom_smooth(method='lm', formula= y~x) + theme_tufte() +ggtitle("Predicted probability vs. observed probability")
+              output$predicted.data.plot <- renderPlot(predicted.data.plot)
+              },
+              # Unable to run r-squared
+              error=function(error_message) {
+                message("Unable to run r-squared")
+                return(NA)
+              }
+              )
+              
+              
+              
+              output$residualsPlot <- renderPlot(glm.diag.plots(regression)) 
+              output$residualsPlotHeader <- renderText("GLM Diagnostic Plots")
+                
                 } else {
                   
-                  #regression <- glm(logRegData[[nullVal]]~., family = "gaussian"(link="identity"),  data=logRegDataSub, na.action = na.omit )
+                
                   regression <- lm(logRegData[[nullVal]]~.,  data=logRegDataSub, na.action = na.omit )
+                  print (colnames(logRegDataSub))
+                  print( length(colnames(logRegDataSub)))
+                  print (levels(logRegDataSub$GeneWeek))
                   
+                  tryCatch({
+                    vifOut <- car::vif(regression)
+                    
+                    output$chiSquaredHeader <- renderText("Variance inflation factors test (VIF) for multicollinear features")
+                    output$regressionChiSquare <- renderTable(vifOut,include.colnames=FALSE, rownames=TRUE, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+                  },
+                  # Unable to run r-squared
+                  error=function(error_message) {
+                    message("Unable to run vif test")
+                    return(NA)
+                  }
+                  )
+                  
+                  tryCatch({
+                    NCV <- ncvTest(regression)
+                    output$NCVheader<-renderText("Non-constant variance of error test (NCV)")
+                    output$NCVtable <- renderPrint(NCV)
+                  },
+                  # Unable to run r-squared
+                  error=function(error_message) {
+                    message("Unable to run NCV test")
+                    return(NA)
+                  }
+                  )
+                  
+                  tryCatch({
+                    
+                    lagBase<- regression$coefficients
+                    
+                    lagBase <- length(lagBase) -1
+                    
+                    
+                    dwt <- durbinWatsonTest(regression, max.lag = lagBase, reps=1000)
+                    output$DWTheader<-renderText("Durbin-Watson test for auto-correlation of error terms")
+                    output$DWTtable <- renderPrint(dwt)
+                  },
+                  # Unable to run r-squared
+                  error=function(error_message) {
+                    message("Unable to run NCV test")
+                    return(NA)
+                  }
+                  )
             
                   
                   tryCatch({    
@@ -1299,7 +1632,7 @@ server <- function(input, output) {
                         value.observed = logRegData[[nullVal]]
                       )
                       
-                      predicted.data.plot <- ggplot(data=predicted.data, aes(x=value.observed, y=value.predicted))+geom_point()+geom_smooth(method='lm', formula= y~x) + theme_tufte() +ggtitle("Predicted probability vs. observed probability")
+                      predicted.data.plot <- ggplot(data=predicted.data, aes(x=value.observed, y=value.predicted))+geom_point()+geom_smooth(method='lm', formula= y~x) + theme_tufte() +ggtitle("Predicted value vs. observed value")
                       output$predicted.data.plot <- renderPlot(predicted.data.plot) 
                       },
                   
@@ -1307,7 +1640,21 @@ server <- function(input, output) {
                     message("Unable to make predictions plot")
                     return(NA)
                   }
-                 )      
+                 )    
+                  
+                  tryCatch({    
+                   
+                    
+          
+                    output$residualsPlot <- renderPlot(residualPlot(regression, type = "rstandard")) 
+                    output$residualsPlotHeader <- renderText("Residuals plot of linear regression model")
+                  },
+                  
+                  error=function(error_message) {
+                    message("Unable to make predictions plot")
+                    return(NA)
+                  }
+                  )  
                   
               }
             
@@ -1403,9 +1750,9 @@ server <- function(input, output) {
             
             #xVal ID refers to the unique identifier for our datapoints in our dataset
             xValID <- "Image.Name"
-            if(input$analysisType == "Individual Clone Analysis"){ xValID <- "CloneName" }
-            if (input$analysisType == "Individual Clone Analysis"){ xValID <- "CloneID" }
-            if (input$analysisType == "No Clones Analysis"){  xValID <- "Image" }
+            if(values$analysisType == "cloneTable"){ xValID <- "CloneName" }
+            if (values$analysisType == "cloneTable"){ xValID <- "CloneID" }
+      
             
             #extract the data column from the second user-specified dataset
             values$plotData2 <- yarp[,c( as.character(zarp))]
