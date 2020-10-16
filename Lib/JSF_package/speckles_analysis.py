@@ -22,11 +22,18 @@ def speckleAnalysis(IDs4, stackno, iHeight, rm, sliceROIs, pouch, timepoint, num
 	from ij.process import ImageProcessor
 	from JSF_package._misc_ import mask_confirmer, selection_confirmer
 	from ij.gui import ShapeRoi, OvalRoi
+	from java.awt import Rectangle
 	
 	rt = ResultsTable.getResultsTable()
 	#Isolate reflux channel image from active z slice
 	IDs4.setSlice(stackno)
 	refluxImp = IDs4.crop()
+
+
+	#Temporary--To be removed 
+	IJ.run(refluxImp, "Multiply...", "value=1.7")
+
+	
 	refluxSeed = refluxImp.duplicate()
 	
 
@@ -69,7 +76,15 @@ def speckleAnalysis(IDs4, stackno, iHeight, rm, sliceROIs, pouch, timepoint, num
 
 	#We create an ROI for the speckles in the image
 	IJ.run(maxip, "Create Selection", "")
-	refluxRoi = ShapeRoi(maxip.getRoi())
+	
+	refluxRoi = maxip.getRoi()
+	if refluxRoi:
+		refluxRoi = ShapeRoi(refluxRoi)
+
+	else:
+		refluxRoi = ShapeRoi(1,1, Rectangle(0,0,1,1))
+
+		
 
 
 
@@ -199,8 +214,10 @@ def speckle_counter(activeRoi, iHeight, iWidth):
 	from ij.measure import ResultsTable, Measurements
 	from ij.plugin.filter import ParticleAnalyzer
 
+
 	#get the mask of the relevant roi
 	antMask = IJ.createImage("speckleMask", "8-bit white", iWidth, iHeight, 1)
+
 	antMask.setRoi(activeRoi)
 	IJ.setForegroundColor(0, 0, 0)
 	IJ.run(antMask, "Fill", "slice")
@@ -214,3 +231,9 @@ def speckle_counter(activeRoi, iHeight, iWidth):
 	refluxTable.reset()
 
 	return refluxCount
+
+
+	return 0
+		
+
+	

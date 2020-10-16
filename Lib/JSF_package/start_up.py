@@ -267,6 +267,7 @@ def ROI_selection(filelist, dir1, rm):
 					roiPath = path[:-4] + "--ROIs.zip"
 					rm.runCommand("Select All")
 					rm.runCommand("save selected", roiPath)
+					rm.reset()
 				else:
 					selections = 0
 			if numImages != 0 and sliceTracker != "" and lifVariable != "":

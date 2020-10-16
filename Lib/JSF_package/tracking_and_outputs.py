@@ -142,7 +142,7 @@ def tracker(cloneROIs, rm, choice):
 
 ####################################################################################################################
 # This does extracts the actual measurements for the whole disc analysis based on the ROIs we have extracted
-def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArray, casMaskArray, refStandArray, refOutArray, rm, rt, iHeight, zStart, names, Title, pouchArray, pouch2Array, colorArray, genotypeNames, stackno, excludinator, iWidth, IDs4):	
+def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArray, casMaskArray, refStandArray, refOutArray, rm, rt, iHeight, zStart, names, Title, pouchArray, pouch2Array, colorArray, genotypeNames, excludinator, iWidth, IDs4):	
 
 	from JSF_package.configBasic import cloneChannel, fluoChannel, dcp1Choice, fluoChoice, speckle, speckleMethod, dcp1Counting, singleCellMethod
 	import JSF_package
@@ -155,7 +155,9 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 	from ij.gui.Roi import getContourCentroid, isArea
 	from JSF_package._misc_ import selection_confirmer
 	from ij.plugin.filter import ParticleAnalyzer, MaximumFinder
+	from ij.process import ImageProcessor as IPr
 
+	from time import sleep
 	IJ.redirectErrorMessages(True)
 
 	#Reset the measurements table and prepare our output headings
@@ -171,7 +173,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 	fileNamesArray = ["File"]
 	imageNamesArray = ["Image Name"]
 	zLevelArray = ["Z level"]
-	totalCasCellCountList = ["Number of Total Cas Cells"]
+	
 
 
 
@@ -256,7 +258,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 		#Here we can do our pre-processing of the fluoresence channel
 		if JSF_package.configBasic.preProcess != "None":
 			from JSF_End_User_Made_Code._executor import user_made_code
-			imp = user_made_code(JSF_package.configBasic.preProcess, imp, IDs3, rm, stackno, pouch, excludinator)	
+			imp = user_made_code(JSF_package.configBasic.preProcess, imp, IDs3, rm, zStart, pouch, excludinator)	
 
 					
 	IJ.run(imp, "Canvas Size...", "width="+str(iWidth)+" height="+str(iHeight+100)+" position=Top-Left zero")
@@ -372,18 +374,22 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			notClonesFluoList = notClonesFluoList + [Mf]
 			notClonesAreaList = notClonesAreaList + [Ma]
 
-		#Now we start measuring for the caspase areas. We are not interested in the fluorescence for these ROIs, so we just measure area.	
+		#Now we start measuring for the caspase areas. We are not interested in the fluorescence for these ROIs, so we just measure area.
+		#We also draw the ROIs to the output image, depending on the ROI
 		#Total caspase measurement
 		if "Caspase_" in roiName and ROIgenotype == 1:
 
 			totalCaspaseList = totalCaspaseList + [Ma]	
 			if dcp1Choice == 1:
-				IJ.setForegroundColor(0,255,255)
+
+
+				casCasImp.setColor(Color.cyan)
 				IJ.run(casCasImp, "Fill", "")
-				IJ.setForegroundColor(0,0,0)
+				casCasImp.setColor(Color.black)
 				IJ.run("Line Width...", "line=2")
 				IJ.run(casCasImp, "Draw", "")
-
+				
+				
 		#Caspase area in the clones
 		if "CaspaseClones" in roiName:
 
@@ -392,10 +398,12 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			#Draw yellow border around caspase in clones
 			if dcp1Choice == 1:
 				casCasImp.getProcessor().drawString("Caspase in Clones", 10, 40, Color.yellow)
-				IJ.setForegroundColor(0,0,0)
+
+				
+				casCasImp.setColor(Color.black)
 				IJ.run("Line Width...", "line=4")
 				IJ.run(casCasImp, "Draw", "")
-				IJ.setForegroundColor(255, 255, 0)
+				casCasImp.setColor(Color.yellow)
 				IJ.run("Line Width...", "line=2")
 				IJ.run(casCasImp, "Draw", "")
 
@@ -405,7 +413,8 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			casCenterList[ROIgenotype] = casCenterList[ROIgenotype] + [Ma]
 			if dcp1Choice == 1:
 				casCasImp.getProcessor().drawString("Center", 10, 60, Color.blue)
-				IJ.setForegroundColor(0, 0, 255)
+				
+				casCasImp.setColor(Color.blue)
 				IJ.run(casCasImp, "Fill", "")
 
 		#Caspase in the border
@@ -414,7 +423,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			casBorderList[ROIgenotype] = casBorderList[ROIgenotype] + [Ma]
 			if dcp1Choice == 1:
 				casCasImp.getProcessor().drawString("Border", 10, 80, Color.red)
-				IJ.setForegroundColor(255, 0, 0)
+				casCasImp.setColor(Color.red)
 				IJ.run(casCasImp, "Fill", "")
 
 		#Caspase in the non-competing region
@@ -422,7 +431,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			notClonesCasList = notClonesCasList + [Ma]
 			
 			if dcp1Choice == 1:
-				IJ.setForegroundColor(255, 255, 0)
+				casCasImp.setColor(Color.cyan)
 				IJ.run(casCasImp, "Fill", "")		
 
 		#Now we do the speckles measurements
@@ -433,29 +442,32 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				speckleClonesFluo[ROIgenotype] = speckleClonesFluo[ROIgenotype] + [MfS]
 				speckleClonesArea[ROIgenotype] = speckleClonesArea[ROIgenotype] + [Ma]
 
+	
+
 			#get the speckle count
 			refluxCount = JSF_package.speckles_analysis.speckle_counter(activeRoi, iHeight, iWidth)
 			speckleClonesList[ROIgenotype] = speckleClonesList[ROIgenotype] + [refluxCount]
 
+			if refluxCount != 0:
+				#Draw ROI to speckle imp mask
+				IJ.run("Line Width...", "line=1")
+				speckleMaskImp.setRoi(activeRoi)
+				IJ.run(speckleMaskImp, "Enlarge...", "enlarge=1 pixel")
+				IJ.setForegroundColor(color[0], color[1], color[2])
+				IJ.run(speckleMaskImp, "Fill", "slice")
+				IJ.setForegroundColor(0,0,0)
+	
+				#Draw ROI to overlay image
+				speckleOverlayImp.setRoi(activeRoi)
 
-			#Draw ROI to speckle imp mask
-			IJ.run("Line Width...", "line=1")
-			speckleMaskImp.setRoi(activeRoi)
-			IJ.run(speckleMaskImp, "Enlarge...", "enlarge=1 pixel")
-			IJ.setForegroundColor(color[0], color[1], color[2])
-			IJ.run(speckleMaskImp, "Fill", "slice")
-			IJ.setForegroundColor(0,0,0)
 
-			#Draw ROI to overlay image
-			speckleOverlayImp.setRoi(activeRoi)
-
-			activeRoi, isActiveRoi = selection_confirmer(activeRoi, iHeight, speckleMaskImp)
-			if isActiveRoi != "<empty>":
 				IJ.run("Line Width...", "line=1")
 				IJ.setForegroundColor(0,255,0)
 				IJ.run(speckleOverlayImp, "Enlarge...", "enlarge=2 pixel")
 				IJ.run(speckleOverlayImp, "Draw", "slice")
 				IJ.setForegroundColor(0,0,0)
+
+				
 
 			speckleOverlayImp.getProcessor().drawString("Clones", 10, 20, Color.green)
 
@@ -466,28 +478,31 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			if speckleMethod != "Count":
 				speckleCenterFluo[ROIgenotype] = speckleCenterFluo[ROIgenotype] + [MfS]
 				speckleCenterArea[ROIgenotype] = speckleCenterArea[ROIgenotype] + [Ma]
+	
+	
 		
 			#get the speckle count 
 			refluxCount = JSF_package.speckles_analysis.speckle_counter(activeRoi, iHeight, iWidth)
 			speckleCenterList[ROIgenotype] = speckleCenterList[ROIgenotype] + [refluxCount]
 
-			#Draw ROI to speckle imp mask
-			IJ.run("Line Width...", "line=1")
-			speckleMaskImp.setRoi(activeRoi)
-			IJ.setForegroundColor(0,0,255)
-			IJ.run(speckleMaskImp, "Fill", "slice")
-			IJ.setForegroundColor(0,0,0)
-			speckleMaskImp.getProcessor().drawString("Clone Center", 10, 40, Color.blue)
+			if refluxCount != 0:
 
-			#Draw ROI to overlay image
-			activeRoi, isActiveRoi = selection_confirmer(activeRoi, iHeight, speckleMaskImp)
-			if isActiveRoi != "<empty>":
+				#Draw ROI to speckle imp mask
+				IJ.run("Line Width...", "line=1")
+				speckleMaskImp.setRoi(activeRoi)
+				IJ.setForegroundColor(0,0,255)
+				IJ.run(speckleMaskImp, "Fill", "slice")
+				IJ.setForegroundColor(0,0,0)
+				speckleMaskImp.getProcessor().drawString("Clone Center", 10, 40, Color.blue)
+	
+	
 				speckleOverlayImp.setRoi(activeRoi)
 				IJ.run("Line Width...", "line=1")
 				IJ.setForegroundColor(0,0,255)
 				IJ.run(speckleOverlayImp, "Enlarge...", "enlarge=2 pixel")
 				IJ.run(speckleOverlayImp, "Draw", "slice")
 				IJ.setForegroundColor(0,0,0)
+
 			IJ.setForegroundColor(0,0,0)
 			speckleOverlayImp.getProcessor().drawString("Clone Center", 10, 40, Color.blue)
 
@@ -497,28 +512,32 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			if speckleMethod != "Count":
 				speckleBorderFluo[ROIgenotype] = speckleBorderFluo[ROIgenotype] + [MfS]
 				speckleBorderArea[ROIgenotype] = speckleBorderArea[ROIgenotype] + [Ma]
-				
+
+	
 			#get the speckle count 
 			refluxCount = JSF_package.speckles_analysis.speckle_counter(activeRoi, iHeight, iWidth)
 			speckleBorderList[ROIgenotype] = speckleBorderList[ROIgenotype] + [refluxCount]
 
-			#Draw ROI to speckle imp mask
-			IJ.run("Line Width...", "line=1")
-			speckleMaskImp.setRoi(activeRoi)
-			IJ.setForegroundColor(255,0,0)
-			IJ.run(speckleMaskImp, "Fill", "slice")
-			IJ.setForegroundColor(0,0,0)
-			speckleMaskImp.getProcessor().drawString("Clone Border", 10, 60, Color.red)
+			if refluxCount != 0:
 
-			#Draw ROI to overlay image
-			activeRoi, isActiveRoi = selection_confirmer(activeRoi, iHeight, speckleMaskImp)
-			if isActiveRoi != "<empty>":
+				#Draw ROI to speckle imp mask
+				IJ.run("Line Width...", "line=1")
+				speckleMaskImp.setRoi(activeRoi)
+				IJ.setForegroundColor(255,0,0)
+				IJ.run(speckleMaskImp, "Fill", "slice")
+				IJ.setForegroundColor(0,0,0)
+				speckleMaskImp.getProcessor().drawString("Clone Border", 10, 60, Color.red)
+
+				#Draw ROI to overlay image
+
 				speckleOverlayImp.setRoi(activeRoi)
 				IJ.run("Line Width...", "line=1")
 				IJ.setForegroundColor(255,0,0)
 				IJ.run(speckleOverlayImp, "Enlarge...", "enlarge=2 pixel")
 				IJ.run(speckleOverlayImp, "Draw", "slice")
 				IJ.setForegroundColor(0,0,0)
+
+			
 			IJ.setForegroundColor(0,0,0)
 			speckleOverlayImp.getProcessor().drawString("Clone Border", 10, 60, Color.red)
 		if "SpecklesNotClones" in roiName:
@@ -527,29 +546,33 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			if speckleMethod != "Count":
 				speckleNotClonesFluo = speckleNotClonesFluo + [MfS]
 				speckleNotClonesArea = speckleNotClonesArea + [Ma]
+
 		
 			#get the speckle count 
 			refluxCount = JSF_package.speckles_analysis.speckle_counter(activeRoi, iHeight, iWidth)
 			speckleNotClonesList[ROIgenotype] = speckleNotClonesList[ROIgenotype] + [refluxCount]	
 
-			#Draw ROI to speckle imp mask
-			IJ.run("Line Width...", "line=1")
-			speckleMaskImp.setRoi(activeRoi)
-			IJ.setForegroundColor(255,255,255)
-			IJ.run(speckleMaskImp, "Fill", "slice")
-			IJ.setForegroundColor(0,0,0)
-			speckleMaskImp.getProcessor().drawString("Not Clones", 10, 80, Color.white)
+			if refluxCount != 0:
 
-			#Draw ROI to overlay image
-			activeRoi, isActiveRoi = selection_confirmer(activeRoi, iHeight, speckleMaskImp)
-			if isActiveRoi != "<empty>":
+				#Draw ROI to speckle imp mask
+				IJ.run("Line Width...", "line=1")
+				speckleMaskImp.setRoi(activeRoi)
+				IJ.setForegroundColor(255,255,255)
+				IJ.run(speckleMaskImp, "Fill", "slice")
+				IJ.setForegroundColor(0,0,0)
+				
+	
+				#Draw ROI to overlay image
 				speckleOverlayImp.setRoi(activeRoi)
 				IJ.run("Line Width...", "line=1")
 				IJ.setForegroundColor(255,255,255)
 				IJ.run(speckleOverlayImp, "Enlarge...", "enlarge=2 pixel")
 				IJ.run(speckleOverlayImp, "Draw", "slice")
 				IJ.setForegroundColor(0,0,0)
+
+				
 			IJ.setForegroundColor(0,0,0)
+			speckleMaskImp.getProcessor().drawString("Not Clones", 10, 80, Color.white)
 			speckleOverlayImp.getProcessor().drawString("Not Clones", 10, 80, Color.white)
 
 
@@ -784,7 +807,7 @@ def create_whole_disc_table(rtD, LoLa, LoLb, LoLc, timepoint):
 	return rtD
 
 ###########################################################################################################################################################################
-def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray, iHeight, numGenotypes, borderArray, rm, zStart, cloneTrackingArray, names, Title, rt, pouchHeight, casRefArray, cloneImpArray, colorArray, stackno, pouchArray, pouch2Array, genotypeNames, pouch, excludinator, iWidth):
+def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray, iHeight, numGenotypes, borderArray, rm, zStart, cloneTrackingArray, names, Title, rt, pouchHeight, casRefArray, cloneImpArray, colorArray, pouchArray, pouch2Array, genotypeNames, pouch, excludinator, iWidth):
 
 	from JSF_package.configBasic import cloneChannel, fluoChannel, fluoChoice, dcp1Choice, cloneTracking
 	from random import randrange
@@ -817,7 +840,7 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 		#Here we can do our pre-processing of the fluoresence channel
 		if JSF_package.configBasic.preProcess != "None":
 			from JSF_End_User_Made_Code._executor import user_made_code
-			imp = user_made_code(JSF_package.configBasic.preProcess, imp, IDs3, rm, stackno, pouch, excludinator)	
+			imp = user_made_code(JSF_package.configBasic.preProcess, imp, IDs3, rm, zStart, pouch, excludinator)	
 		
 	IJ.run(imp, "Canvas Size...", "width="+str(iWidth)+" height="+str(iHeight+100)+" position=Top-Left zero")
 	
@@ -934,8 +957,6 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 			totalCount = 0 #This variable tracks our total number of cells/clones/cell death events
 			for clone in genotype:
 
-				totalCount += 1
-					
 				
 				#When we are assigning cells or capsase cells to either the border or the center, we run into a problem. What if a cell object is in the border at one z-level and the center at another z-level?
 				#The solution here is to say that if the cell object is in the border at more z-levels than its in the center, we count it as a border cell. 
@@ -949,9 +970,12 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 				rVal = int(round(randrange(0,255)*0.618033988749895))
 				gVal = int(round(randrange(0,255)*0.618033988749895))
 				bVal = int(round(randrange(0,255)*0.618033988749895))
-				IJ.setForegroundColor(rVal, gVal, bVal)
-	
+				outImp.setColor(Color(rVal, gVal, bVal))
+
+
 				#Get each ROI per clone
+				#Add to total count?
+				totalCountAdd = False
 				for c in clone:
 	
 					#Get the border ROIs for comparison
@@ -973,10 +997,9 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 							casO = casR
 						
 
-					
-	
+
+
 					#We extract the ROIs from these indices
-					
 					cloneROI = rm.getRoi(c)
 					cloneROI = cloneROI.clone()
 					cloneROI = ShapeRoi(cloneROI)
@@ -984,10 +1007,38 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 					borderROI = borderROI.clone()
 					borderROI = ShapeRoi(borderROI)
 
+
+					#Get the pouch ROI
+					bName = rm.getName(c)
+					zFinder = bName.find("_Z:")
+					zEnd = bName.find("_No.")
+					bName = bName[zFinder+3:zEnd]
+					idexPouch = int(bName) - zStart
+					pouchROI = pouchArray[idexPouch]
+
+					if JSF_package.configRoi.halfHalfNC == True and ROIgenotype != 1:
+						pouchROI = pouch2Array[idexPouch]
+
+					pouchROI = pouch.clone()
+					pouchROI = ShapeRoi(pouchROI)
+
+					#Check if the ROI overlaps with the Pouch region at all 
+					pouchChecker = cloneROI.clone()
+					overlapROI = pouchChecker.and(pouchROI)
+					overlapROI, isOverlap = selection_confirmer(overlapROI, iHeight, imp)
+					if isOverlap != '<empty>':
+						pouchOverlap = overlapROI.size()
+						totAreaP = cloneROI.size()
+						if pouchOverlap > totAreaP/4:
+							totalCountAdd = True
+
 					#get the center ROI
 					centerROI = rm.getRoi(zBorder - 1)
 					centerROI = centerROI.clone()
 					centerROI = ShapeRoi(centerROI)
+
+
+					
 	
 					#For the individual cell tracking
 					if trackCount != 1:
@@ -1138,7 +1189,7 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 						if JSF_package.configRoi.halfHalfNC == True:
 							if ROIgenotype == 1:
 							
-								idexPouch = int(bName) - stackno
+								idexPouch = int(bName) - zStart
 								pouchActive = pouchArray[idexPouch]
 						
 						
@@ -1271,7 +1322,7 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 								IJ.setForegroundColor(0, 0, 0)
 								IJ.run(outImp, "Draw", "slice")
 								IJ.run("Line Width...", "line=1")
-								IJ.setForegroundColor(rVal, gVal, bVal)
+								outImp.setColor(Color(rVal, gVal, bVal))
 								IJ.run(outImp, "Draw", "slice")
 	
 	
@@ -1286,7 +1337,7 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 								IJ.setForegroundColor(255,0,0)
 								IJ.run(outImp, "Draw", "slice")
 								IJ.run("Line Width...", "line=1")
-								IJ.setForegroundColor(rVal, gVal, bVal)
+								outImp.setColor(Color(rVal, gVal, bVal))
 								IJ.run(outImp, "Draw", "slice")
 	
 							if isCasC != "<empty>":
@@ -1295,7 +1346,7 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 								IJ.setForegroundColor(0,255,0)
 								IJ.run(outImp, "Draw", "slice")
 								IJ.run("Line Width...", "line=1")
-								IJ.setForegroundColor(rVal, gVal, bVal)
+								outImp.setColor(Color(rVal, gVal, bVal))
 								IJ.run(outImp, "Draw", "slice")
 	
 					#Draw clone tracking output image
@@ -1316,21 +1367,21 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 						IJ.run("Line Width...", "line=3")
 						if (Uhold >= Chold) and (Uhold > 0):
 							IJ.run(outImp, "Draw", "slice")
-							IJ.setForegroundColor(rVal, gVal, bVal)
+							outImp.setColor(Color(rVal, gVal, bVal))
 							IJ.run(outImp, "Fill", "slice")
 							IJ.setForegroundColor(255, 0, 0)
 							IJ.run("Line Width...", "line=1")
 							IJ.run(outImp, "Draw", "slice")
 						elif Chold > Uhold:
 							IJ.run(outImp, "Draw", "slice")
-							IJ.setForegroundColor(rVal, gVal, bVal)
+							outImp.setColor(Color(rVal, gVal, bVal))
 							IJ.run(outImp, "Fill", "slice")
 							IJ.setForegroundColor(0, 0, 255)
 							IJ.run("Line Width...", "line=1")
 							IJ.run(outImp, "Draw", "slice")
 						elif Jhold > 0:
 							IJ.run(outImp, "Fill", "slice")
-							IJ.setForegroundColor(rVal, gVal, bVal)
+							outImp.setColor(Color(rVal, gVal, bVal))
 							IJ.run(outImp, "Draw", "slice")
 							IJ.setForegroundColor(255, 255, 255)
 							IJ.run("Line Width...", "line=1")
@@ -1365,7 +1416,8 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 							
 						
 
-				
+				if totalCountAdd == True:
+					totalCount += 1
 				ti = ti+1
 	
 				#Add our border/center individual counts

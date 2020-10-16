@@ -71,6 +71,7 @@ class ButtonClic(ActionListener):
         # Do an action depending on the button clicked
 		if Source.label == "Set advanced clone segmentation parameters":
 
+			
 			#Import config file relevant to this panel
 			from JSF_package import configCloneSeg as cfgCS
 
@@ -88,6 +89,8 @@ class ButtonClic(ActionListener):
 			gd2.addChoice("Max Z-projection of 'X' slices above and below current plane:", Numbers, str(cfgCS.rollingZ))
 			gd2.setInsets(0,0,0)
 			gd2.addChoice("Set post-processing of Weka-segmented images (Weka segmentation only):", postChoices, cfgCS.clonesPost)
+
+			
 			
 			gd2.setInsets(0,0,0)
 			gd2.addMessage("Clone tracking clustering with DBSCAN - requires BioVoxxel plugin", Font("Sanserif", Font.BOLD, 12))
@@ -109,10 +112,13 @@ class ButtonClic(ActionListener):
 			gd2.addNumericField("Seeded region growing gaussian blur radius:", cfgCS.blurClones, 1)
 			gd2.setInsets(0,0,0)
 			gd2.addNumericField("Seeded region growing filter background seeds:", cfgCS.minSeedSizeClones, 1)
-			
+
+	
 			
 			gd2.showDialog()
 
+	
+			
 			if gd2.wasOKed():
 				#If user pressed okay, get the user specified variables
 
@@ -130,9 +136,12 @@ class ButtonClic(ActionListener):
 				invertSeedClones = gd2.getNextBoolean()
 				blurClones = gd2.getNextNumber()
 				minSeedSizeClones = gd2.getNextNumber()
-				if seedInstalled == 0 and SeedChoiceClones == True:
+
+				
+				if seedInstalled == 0 and seedChoiceClones == True:
+				
 					seedChoiceClones = False
-					IJ.error("To perform seeded region growing, please install the IJ-plugins toolkit")
+					IJ.log("To perform seeded region growing, please install the IJ-plugins toolkit")
 				
 
 				#Write these variables to a string
@@ -161,6 +170,7 @@ class ButtonClic(ActionListener):
 				outFile.write(output)
 				outFile.close()
 				reload(JSF_package.configCloneSeg)
+	
 
 				
 		
@@ -330,22 +340,29 @@ class ButtonClic(ActionListener):
 		elif Source.label == "Save and display options":
 			from JSF_package import configSave as cfgS
 			gd2.addMessage("Save and Display Options", Font("Sanserif", Font.BOLD, 12))
+			gd2.addCheckbox("Generate output image panel?", cfgS.generateImage)
 			gd2.addCheckbox("Display output panel?", cfgS.visualize)
 			gd2.addCheckbox("Save output images?", cfgS.saveChoice)
 			gd2.addChoice("Save every Nth output image?", Numbers, str(cfgS.imageSampler))
+			gd2.addChoice("Save output CSV after every Nth image?", Numbers, str(cfgS.csvSaver))
 						
 			gd2.showDialog()
 			
 			if gd2.wasOKed():
 
-			
+				generateImage = gd2.getNextBoolean()
 				visualize = gd2.getNextBoolean()
 				saveChoice = gd2.getNextBoolean()
 				imageSampler = gd2.getNextChoice()
 				
+				csvSaver =gd2.getNextChoice()
+				
+				
 				output = output + "visualize="+ str(visualize)+"\n"
 				output = output + "saveChoice="+ str(saveChoice)+"\n"
 				output = output + "imageSampler="+str(imageSampler) +"\n"
+				output = output + "csvSaver="+ str(csvSaver)+"\n"
+				output = output + "generateImage="+str(generateImage) +"\n"
 
 				path = os.getcwd()
 				dir2 = os.path.join(path, "jars", "Lib", "JSF_package")
@@ -799,6 +816,9 @@ def Open_GUI():
 							output = output+"visualize="+str(JSF_package.configSave.visualize)+"\n"
 							output = output+"saveChoice="+str(JSF_package.configSave.saveChoice)+"\n"
 							output = output+"imageSampler="+str(JSF_package.configSave.imageSampler)+"\n"
+							output = output+"csvSaver="+str(JSF_package.configSave.csvSaver)+"\n"
+							output = output+"generateImage="+str(JSF_package.configSave.generateImage)+"\n"
+
 							
 							output = output+"minCasSize="+str(JSF_package.configDeathTrack.minCasSize)+"\n"
 							output = output+"dcp1Gauss="+str(JSF_package.configDeathTrack.dcp1Gauss)+"\n"

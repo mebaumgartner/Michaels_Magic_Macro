@@ -13,7 +13,8 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 
 	#Import user defined variables
 	import JSF_package
-	from JSF_package.configBasic import fluoChoice
+	from JSF_package.configBasic import fluoChoice, cloneSeg
+
 	from JSF_package.configCloneSeg import subAdd, borderMargin, holeDiameter, rollingZ, winwo, seedChoiceClones, invertSeedClones, minSeedSizeClones
 	from JSF_package.configRoi import halfHalf
 	
@@ -366,8 +367,8 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 
 		
 		color = colorArray[genotypeChannel-1]
-
 		
+		IJ.run(resultant, 'Make Binary', "")
 		
 		#We create a selection from the mask
 		IJ.run(resultant, "Create Selection", "")
@@ -483,12 +484,18 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 			if JSF_package.configBasic.cloneSeg == 'Membrane-tagged GFP' or JSF_package.configBasic.cloneSeg == "Cytosolic GFP" or JSF_package.configBasic.cloneSeg == "Use ROIs As Clones":
 			
 				#This is our ROI for everything that isnt clones
-				IJ.run(resultant, "Create Selection", "")
-				whatItDo = pouch.clone()
-				if JSF_package.configRoi.halfHalfNC == True and genotypeChannel != 1:
-					whatItDo = excludinator.clone()
-				whatItDo.xor(z)	
+				if cloneSeg != 'Use ROIs As Clones':
+					IJ.run(resultant, "Create Selection", "")
+					whatItDo = pouch.clone()
+					if JSF_package.configRoi.halfHalfNC == True and genotypeChannel != 1:
+						whatItDo = excludinator.clone()
+					whatItDo.xor(z)	
+	 	
+				else:
+					whatItDo = None	
 				whatItDo, itDoNot = selection_confirmer(whatItDo, iHeight, resultant)
+
+
 					
 				if itDoNot == "<empty>":
 					notClones = pouch.clone()

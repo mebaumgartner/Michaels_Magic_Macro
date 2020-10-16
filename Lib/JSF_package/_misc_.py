@@ -35,20 +35,40 @@ def selection_confirmer(ROI, iHeight, imp):
 	from ij.gui import Plot, ShapeRoi
 
 	#Initialize variables and make sure our ROI is in the correct format
-	emptyRoi = ""
-	ROI = ShapeRoi(ROI)
-
-	#Determinining if an ROI is empty is actually tricky. How I do it is by getting the string (which has the general details), and finding 
-	#What it's width is. If the width of the ROI is zero, it is empty for our purposes
-	x = str(ROI).find("width")
-	x = str(ROI)[x+6:x+7]
-	if x == "0":
-
+	if not ROI:
 		#If the ROI is empty, we replace it with a placeholder ROI and return an "<empty>" string that we can use to later identify it
 		imp.setRoi(5,iHeight+20,1,1)
 		ROI = imp.getRoi()
 		ROI = ShapeRoi(ROI)
 		emptyRoi = "<empty>"
+
+		return ROI, emptyRoi
+		
+
+	if ROI:
+
+		emptyRoi = ""
+		ROI = ShapeRoi(ROI)
+	
+		#Determinining if an ROI is empty is actually tricky. How I do it is by getting the string (which has the general details), and finding 
+		#What it's width is. If the width of the ROI is zero, it is empty for our purposes
+		x = str(ROI).find("width")
+		x = str(ROI)[x+6:x+7]
+		if x == "0":
+	
+			#If the ROI is empty, we replace it with a placeholder ROI and return an "<empty>" string that we can use to later identify it
+			imp.setRoi(5,iHeight+20,1,1)
+			ROI = imp.getRoi()
+			ROI = ShapeRoi(ROI)
+			emptyRoi = "<empty>"
+
+	else:
+
+			#If the ROI is empty, we replace it with a placeholder ROI and return an "<empty>" string that we can use to later identify it
+			imp.setRoi(5,iHeight+20,1,1)
+			ROI = imp.getRoi()
+			ROI = ShapeRoi(ROI)
+			emptyRoi = "<empty>"
 	return ROI, emptyRoi
 		
 ############
@@ -84,7 +104,7 @@ def channel_organize_and_open(indices, inPath, timeFinish, timepoint ):
 	from JSF_package.configCellTrack import seedChannelCell, seedChoiceCell
 	from JSF_package.configDeathSeg import seedChoiceCas, seedChannelCas
 	from JSF_package.configRoi import seedChannel, seedChoice
-	from ij import ImageStack, ImagePlus
+	from ij import ImageStack, ImagePlus, IJ
 	
 	primaryChannels = []
 	secondaryChannels = []

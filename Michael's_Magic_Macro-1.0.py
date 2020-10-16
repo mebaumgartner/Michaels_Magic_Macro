@@ -4,7 +4,7 @@
 #
 #  Michael's Magic Macro - this is a script for comprehensive image analysis and quantification of Imaginal Wing Disc Confocal Images
 #
-#  Acceptable file inputs are .tif or .lif file image stacks of 1024x1024 or 512x512 resolution with clearly marked clones
+#  
 #
 #
 ##########################################################################################################################################################################################
@@ -42,6 +42,7 @@ def script():
 	# We call the JSF package and relevant functions
 	import JSF_package
 	from JSF_package._misc_ import mask_confirmer, channel_open, selection_confirmer, channel_organize_and_open, decode_channels
+	from JSF_package.configSave import generateImage, csvSaver
 	import JSF_package
 	
 	#Default imageJ and pyton imports that should all be installed with you basic FIJI
@@ -54,6 +55,7 @@ def script():
 	from ij.gui import ShapeRoi
 	from random import randrange
 	from ij.plugin import ZProjector, Concatenator
+	
 
 	
 	#Close old data tables
@@ -206,8 +208,8 @@ def script():
 
 			#Open each file if its a lif of tif
 			if (tcheck == -1) and (mcheck == -1) and (zcheck == -1) and (pcheck == -1):
+				
 				anyImages = True
-
 				IJ.log("Analysis started on file: "+ str(names))
 
 				
@@ -218,6 +220,7 @@ def script():
 				skipString, numImages, startEndSlice, lifVariable = JSF_package.start_up.selection_retrieval(names, dir1, rm)
 				if skipString != "Cancel":
 					validSelections = True
+				
 					
 				
 
@@ -235,6 +238,9 @@ def script():
 				#Designate active filepath and track number of images opened
 				inPath = dir1 + names
 				lifVal = 0
+
+				ROIarchive = rm.getCount()
+
 				
 				
 				#####################################   Loop through all images in the file        #####################################################
@@ -247,6 +253,14 @@ def script():
 						
 						IJ.log("Analysis started on image: "+str(indices))
 
+						#Reset the ROI manager
+						currentNumRois = rm.getCount()
+						while currentNumRois > ROIarchive:
+							rm.select(currentNumRois - 1)
+							rm.runCommand("Delete")
+							currentNumRois = rm.getCount()
+						
+						
 						
 						
 						#Placeholder variables for timelapse
@@ -263,6 +277,8 @@ def script():
 						while timepoint <= timeFinish:
 
 							#Set the starting and ending Z-slices from user input
+							
+							
 							stackno = startEndSlice[fullLoopCounter*2]
 							stackend = startEndSlice[(fullLoopCounter*2)+1]
 							ref1 = stackno.find(".")
@@ -285,7 +301,7 @@ def script():
 								return	
 								
 							#if the user wants to have the image panel displayed during processing, we show it
-							if JSF_package.configSave.visualize == 1:
+							if JSF_package.configSave.visualize == 1 and generateImage == True:
 								impVis.show()
 							
 							
@@ -336,6 +352,8 @@ def script():
 							calibration = IDs.getCalibration()
 							pouchArray = []
 							pouch2Array =[]
+
+							IJ.log("Image Name: "+ str( Title))
 								
 						
 							#Get the dcp1 channel from the original image
@@ -865,20 +883,27 @@ def script():
 							iHeight = iHeightArchive
 
 							IJ.log("Whole disc measurements initiated")
-							LoLa, LoLb = JSF_package.tracking_and_outputs.whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArray, casMaskArray, refStandArray, refOutArray, rm, rt, iHeight, zStart, names, Title, pouchArray, pouch2Array, colorArray, genotypeNames, stackno, excludinator, iWidth, IDs4)
+							LoLa, LoLb = JSF_package.tracking_and_outputs.whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArray, casMaskArray, refStandArray, refOutArray, rm, rt, iHeight, zStart, names, Title, pouchArray, pouch2Array, colorArray, genotypeNames, excludinator, iWidth, IDs4)
 							IJ.log("Whole disc measurements completed successfully. Tracking measurements initiated")
-							outImp, outClImp, cloneMaskStack, cloneLoLa, cloneLoLb, LoLc = JSF_package.tracking_and_outputs.tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray, iHeight, numGenotypes, borderArray, rm, zStart, cloneTrackingArray, names, Title, rt, pouchHeight, casRefArray, cloneImpArray, colorArray, stackno, pouchArray, pouch2Array, genotypeNames, pouch, excludinator, iWidth)
+							outImp, outClImp, cloneMaskStack, cloneLoLa, cloneLoLb, LoLc = JSF_package.tracking_and_outputs.tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray, iHeight, numGenotypes, borderArray, rm, zStart, cloneTrackingArray, names, Title, rt, pouchHeight, casRefArray, cloneImpArray, colorArray, pouchArray, pouch2Array, genotypeNames, pouch, excludinator, iWidth)
 							IJ.log("Tracking measurements completed successfully. Whole disc results table generation initiated")
 							rtD = JSF_package.tracking_and_outputs.create_whole_disc_table(rtD, LoLa, LoLb, LoLc, timepoint)
 							IJ.log("Whole disc results table generation completed successfully")
 							rtD.show("Disc Analysis")
 							rtS = JSF_package.tracking_and_outputs.create_summary_table(rtS, LoLa, LoLb, LoLc, timepoint)
+
+							#flush big variables 
+							LoLa = LoLb = LoLc = sliceROIs = None
+							
 							IJ.log("Whole disc results table generation completed successfully")
 							rtS.show("Summary Table")
 							if JSF_package.configBasic.cloneTracking == 1:
 								IJ.log("Clone tracking results table generation initiated")
 								rtC = JSF_package.tracking_and_outputs.create_clone_table(rtC, cloneLoLa, cloneLoLb, timepoint)
 								rtC.show("Clone Analysis")
+
+								#Flush big variables 
+								cloneLoLa = cloneLoLb = None
 								IJ.log("Clone tracking results table generation completed successfully")
 							timepoint = timepoint + 1
 							
@@ -886,42 +911,61 @@ def script():
 							#make our composite image
 							IJ.log("Composite output image generation initiated")
 							#imp is just the imagePlus of our display panel
-							imp = JSF_package.tracking_and_outputs.image_generator(cloneMaskStack, borderMaskArray, casMaskArray, cloneImpArray, fluoImpArray, casImpArray, iHeight, casCasArray, cloneBorderArray, cloneTrackingArray, outImp, outClImp, refBaseArray, refOutArray, refStandArray, iWidth)
-							timeLapseImageArray.extend([imp])
-							IJ.log("Composite output image generation completed successfully")
+							if generateImage == True:
+								imp = JSF_package.tracking_and_outputs.image_generator(cloneMaskStack, borderMaskArray, casMaskArray, cloneImpArray, fluoImpArray, casImpArray, iHeight, casCasArray, cloneBorderArray, cloneTrackingArray, outImp, outClImp, refBaseArray, refOutArray, refStandArray, iWidth)
+								
+							
+								if JSF_package.configBasic.timelapse == False:
+									timeLapseImageArray.extend([imp])
+								IJ.log("Composite output image generation completed successfully")
+
+							#Flush image stacks now that they've been used								
+							cloneMaskStack = borderMaskArray = casMaskArray = cloneImpArray = fluoImpArray = casImpArray = casCasArray = cloneBorderArray = cloneTrackingArray = outImp = outClImp = refBaseArray = refOutArray = refStandArray = None
+
 							
 							#Prepare the destination in which we save the image
-							path = os.path.join(dir2, names)
-							pathEx = path+"--WeirdImageName--"+str(randrange(0,999))
-							path = path + str(Title)+"--Processed Stack"
+							savName = names.replace("/", '')
+							
+
+							path = os.path.join(dir2,savName)
+							savTitle = Title.replace("/", "")
+							path = path + str(savTitle)+"--Processed Stack"
 								
-							#display panel if prompted by user
-							if JSF_package.configSave.visualize == 1:
-								impVis.hide()
-								impVis = imp.duplicate()
+
 	
 							#Here we save the output images	
-							if JSF_package.configSave.saveChoice == 1 and JSF_package.configBasic.timelapse == False:
+							if JSF_package.configSave.saveChoice == 1 and JSF_package.configBasic.timelapse == False and generateImage == True:
 								if int(JSF_package.configSave.imageSampler) > 1:
 									if (int(goodImage) % int(JSF_package.configSave.imageSampler)) == 0:
-										try:
-											IJ.saveAs(imp, "Tiff", path)
-										except: 
-											IJ.saveAs(imp, "Tiff", pathEx) 
-								else:
-									try:
 										IJ.saveAs(imp, "Tiff", path)
-									except: 
-										IJ.saveAs(imp, "Tiff", pathEx) 
+								else:
+									IJ.saveAs(imp, "Tiff", path)
+									
+
+							#Dump our composite image
+							
+							#display panel if prompted by user
+							if generateImage == True:
+								if JSF_package.configSave.visualize == 1:
+									impVis.hide()
+									impVis = imp
+								else:
+									imp.flush()
 	
 							#Here we save our csv's after each 10 discs. This keeps our memory from crashing
-							if (goodImage > 0) and (goodImage%10 == 0):
+							isSaved = False
+							
+							if (goodImage > 0) and (goodImage%csvSaver == 0):
+								
 								pathR = dir2
 								namePath = dir1name
 								pathR = pathR.replace(".tif", "")
 								pathR = pathR.replace(".lif", "")
-								suffixD =  "whole disc analysis-- "+str(Title)+"_"+str(csvCount)+".csv"
-								suffixC = "clone tracking analysis-- "+str(Title)+"_"+str(csvCount)+".csv"
+
+								savTitle  = Title.replace("/", "")
+								
+								suffixD =  "whole disc analysis-- "+str(savTitle)+"_"+str(csvCount)+".csv"
+								suffixC = "clone tracking analysis-- "+str(savTitle)+"_"+str(csvCount)+".csv"
 								discTable = os.path.join(pathR, suffixD)
 								cloneTable = os.path.join(pathR, suffixC)
 								x = WindowManager.getWindow("Disc Analysis")
@@ -936,7 +980,7 @@ def script():
 									except:
 										x = WindowManager.getWindow(suffixD)
 										WindowManager.setWindow(x)
-										suffixD =  "whole disc analysis-- "+str(Title)+"_"+str(csvCount)+"("+str(counter)+")"+".csv"
+										suffixD =  "whole disc analysis-- "+str(savTitle)+"_"+str(csvCount)+"("+str(counter)+")"+".csv"
 										discTable = os.path.join(pathR, suffixD)
 										saveLooper = True
 										if (counter == 5):
@@ -958,7 +1002,7 @@ def script():
 										except:
 											x = WindowManager.getWindow(suffixC)
 											WindowManager.setWindow(x)
-											suffixC = "clone tracking analysis-- "+str(Title)+"_"+str(csvCount)+"("+str(counter)+")"+".csv"
+											suffixC = "clone tracking analysis-- "+str(savTitle)+"_"+str(csvCount)+"("+str(counter)+")"+".csv"
 											cloneTable = os.path.join(pathR, suffixC)
 											
 											saveLooper = True
@@ -968,10 +1012,13 @@ def script():
 											
 									IJ.selectWindow(suffixC)
 									IJ.run("Close")
+								
+									
 								IJ.selectWindow(suffixD)
 								IJ.run("Close")
 								csvCount = csvCount + 1
-								IJ.log("Batch of results from ten Z-stacks saved")
+								IJ.log("Batch of results from Z-stacks saved")
+								isSaved = True
 								
 							selections = 1
 							goodImage = goodImage +1
@@ -984,7 +1031,7 @@ def script():
 						fullLoopCounter = fullLoopCounter + 1
 						
 						#Here we save the output images	
-						if JSF_package.configSave.saveChoice == 1 and JSF_package.configBasic.timelapse == True:
+						if JSF_package.configSave.saveChoice == 1 and JSF_package.configBasic.timelapse == True and generateImage == True:
 
 							IJ.log("Timelapse composite image generation started")
 							
@@ -1000,13 +1047,11 @@ def script():
 						
 							if int(JSF_package.configSave.imageSampler) > 1:
 								if (int(goodImage) % int(JSF_package.configSave.imageSampler)) == 0:
-									try:
-										IJ.saveAs(impTL, "Tiff", path)
-									except: IJ.saveAs(impTL, "Tiff", pathEx) 
-							else:
-								try:
 									IJ.saveAs(impTL, "Tiff", path)
-								except: IJ.saveAs(impTL, "Tiff", pathEx) 
+
+							else:
+								IJ.saveAs(impTL, "Tiff", path)
+					
 							
 					except:
 						try: 
@@ -1030,63 +1075,43 @@ def script():
 			else:
 				continue
 				
-			#Here we save our results
-			if goodImage > 0 and (goodImage%10 != 0):
+			#Here we save our results, if they have not been saved already
+
+			#Check if there are any unsaved results
+			windows =  ij.WindowManager.getNonImageTitles()
+			openning = False
+			for item in windows:
+				if item == "Disc Analysis":
+					openning = True
+
+			#If yes, save them to the output directory
+			if openning == True:
 				pathR = dir2
 				namePath = dir1name
 				pathR = pathR.replace(".tif", "")
 				pathR = pathR.replace(".lif", "")
-				suffixD =  "whole disc analysis-- "+str(Title)+"_"+str(csvCount)+".csv"
-				suffixC = "clone tracking analysis-- "+str(Title)+"_"+str(csvCount)+".csv"
+				savTitle = Title.replace("/", "")
+				suffixD =  "whole disc analysis-- "+str(savTitle)+"_"+str(csvCount)+".csv"
+				suffixC = "clone tracking analysis-- "+str(savTitle)+"_"+str(csvCount)+".csv"
 				discTable = os.path.join(pathR, suffixD)
 				cloneTable = os.path.join(pathR, suffixC)
 				x = WindowManager.getWindow("Disc Analysis")
 				WindowManager.setWindow(x)
-								
-				saveLooper = True
-				counter = 1
-				while saveLooper == True and counter <= 5:
-					saveLooper = False
-					try:
-						
-						IJ.saveAs("Results", discTable)
-					except:
-						x = WindowManager.getWindow(suffixD)
-						WindowManager.setWindow(x)
-						suffixD =  "whole disc analysis-- "+str(Title)+"_"+str(csvCount)+"("+str(counter)+")"+".csv"
-						discTable = os.path.join(pathR, suffixD)
-						saveLooper = True
-						if (counter == 5):
-							IJ.log("Could not save wing disc results table: "+ str(discTable))
-					counter += 1
+				IJ.saveAs("Results", discTable)
+				x = WindowManager.getWindow(suffixD)
+				WindowManager.setWindow(x)
+				IJ.run("Close")
+
 					
 				if JSF_package.configBasic.cloneTracking == 1:
 					x =WindowManager.getWindow("Clone Analysis")
 					WindowManager.setWindow(x)
-
-					saveLooper = True
-					counter = 1
-					while saveLooper == True and counter <= 5:
-						saveLooper = False
-						try:
-							
-							IJ.saveAs("Results", cloneTable)
-						except:
-							x =WindowManager.getWindow(suffixC)
-							WindowManager.setWindow(x)
-							suffixC = "clone tracking analysis-- "+str(Title)+"_"+str(csvCount)+"("+str(counter)+")"+".csv"
-							cloneTable = os.path.join(pathR, suffixC)
-							
-							saveLooper = True
-							if (counter == 5):
-								IJ.log("Could not save wing disc results table: "+ str(cloneTable))
-						counter += 1
-
-
-					IJ.selectWindow(suffixC)
+					IJ.saveAs("Results", cloneTable)
+					x = WindowManager.getWindow(suffixC)
+					WindowManager.setWindow(x)
 					IJ.run("Close")
-				IJ.selectWindow(suffixD)
-				IJ.run("Close")
+
+
 				IJ.log("Final batch of results saved")
 
 
@@ -1111,7 +1136,7 @@ def script():
 
 		
 		# show display panel if prompted
-		if JSF_package.configSave.visualize == 1:
+		if JSF_package.configSave.visualize == 1 and generateImage == True:
 			impVis.show()  
 
 	if anyImages == False:
@@ -1124,8 +1149,7 @@ def script():
 		IJ.error("There are no ROI selections in this folder. \n\n"+ "Either you haven't made selections before, or your '--ROIs.zip' and '--Selections.txt' files have been misplaced. \n \n" +"Try re-doing the analysis, but leave the 'Restore ROIs' checkbox unticked.")
 		return
 
-	# if there were no errors, save everything
-	if errCount == 0:
+	if goodImage > 0:
 		pathR = dir2
 		sumTable = os.path.join(pathR, "summary table.csv")
 		x =WindowManager.getWindow("Summary Table")
@@ -1149,13 +1173,15 @@ def script():
 				if (counter == 5):
 					IJ.log("Could not save summary results table: "+ str(sumTable))
 			counter += 1
-
+	# if there were no errors, save everything
+	if errCount == 0:
 		IJ.showMessage("All done! No errors detected.")
 		IJ.log("Analysis complete. No errors detected.")
 	else:
 		IJ.showMessage("All done! " + str(errCount) + " errors were detected. The following could not be processed: " + errStr+ ".")	
 		IJ.log("Analysis complete. "+ str(errCount) + " errors were detected. The following could not be processed: " + errStr+ ".")
-		txtPath = os.path.join(dir2, Title + "--Unprocessed.txt")
+		savTitle = Title.replace("/", "")
+		txtPath = os.path.join(dir2, savTitle + "--Unprocessed.txt")
 		outFile = open(txtPath, 'w')
 		output = "_"+errStr
 		outFile.write(output)
