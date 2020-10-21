@@ -14,6 +14,8 @@ data_summary2 <- function(x) {
     return(c(y=m,ymin=m,ymax=m))
 }
 
+
+
 ############################################################################################################################################################
 ############################################################################################################################################################
 #############################################################################################################################################################
@@ -34,9 +36,14 @@ server <- function(input, output) {
     values$loaded <- 0
     values$addCount <- 0
     values$refString <- ""
+    values$switchO <- FALSE
+    values$cols2 <- c()
     
-    output$plotso <- renderPlot(ggplot())
-    output$plotso2 <- renderPlot(ggplot())
+    output$plotso <- renderUI({img(src = "Logo.png")})
+
+ 
+    
+
     
     
     
@@ -46,10 +53,39 @@ server <- function(input, output) {
     #Create a UI based on the analyzed values put in
     output$plotSelection = renderUI({
         mydata = values$choices
-        selectInput('plotter', 'Select plot to generate', mydata)
+        if (values$switchO == TRUE){
+          mydata<- "TimePoint.Losers"
+          if(input$sepTimePoints ==  "Preserve Z-plane information"){
+            mydata<- "z.level.Losers"
+          }
+        }
+        selectInput('plotter', 'Select variable to plot', mydata)
     })
+    output$plotType = renderUI({
+      if (values$switchO == FALSE){
+        choiceO <- c("Dot Plot w/ Box Plot", "Violin Plot", "Paired Box Plot", "Histogram", "Histogram w/ Density Plot", "Scatter Plot", "Scatter Plot w/ Regression Line")
+        
+      } else {
+        choiceO <-c("Line Plot")
+      }
+      selectInput("plotType", "Specify plot format:", choices=choiceO)
+    })
+    output$checkChoices = renderUI({
+      vchoices<-values$rawChoices
+      checkboxGroupInput("columns","Select columns to display",choices=vchoices,inline = T)
+    })
+    output$checkInversion = renderUI({
+      if (isFALSE(input$sepTimePoints=="Default")){
+       
+      vchoices2<-values$vchoices2
+      selectInput("columns2","Select columns to invert",choices=vchoices2)
+      }
+
+    })
+
+    
     output$stats = renderUI({
-        if ((input$plotType == "Scatter Plot") | (input$plotType == "Scatter Plot w/ Regression Line")){
+        if ((input$plotType == "Scatter Plot") | (input$plotType == "Scatter Plot w/ Regression Line") ){
             statsOptions <- c("Pearson r Correlation", "Kendall Tau Correlation", "Spearman's Rho Correlation", "Hotellings T-Squared Test")
         } else {
             statsOptions <- c("wilcox.test","t.test", "kruskal.test", "anova") 
@@ -59,7 +95,13 @@ server <- function(input, output) {
     
     #Create control group selection
     output$controlGroup = renderUI({
-        controlOptions <- c("None", "All/Basemean", values$control2)
+        controlOptions <- values$control2
+        if (controlOptions != c("None", "All/Basemean")){
+          controlOptions <- c(controlOptions, "None", "All/Basemean")
+        }
+        if (input$plotType == "Paired Box Plot"){
+          controlOpitons = c("N/A")
+        }
         selectInput('refgroup', 'Specify control/reference group', controlOptions)
         
     })
@@ -117,14 +159,33 @@ server <- function(input, output) {
             write.csv(values$wwda2, file)
         })
     
+
+      
+    
+    output$plotDownload = downloadHandler(
+      filename = function (){
+        paste("data-", Sys.Date(), ".png", sep="")
+      },
+      
+
+
+      content = function(file) {
+        device <- function(..., width, height) {
+    
+          
+          grDevices::png(..., width = input$plotwidth, height = input$plotheight,
+                         res = input$plotres, units = input$plotUnit)
+        }
+        ggsave(file, plot = values$plotso, device = device)
+      })
     
     
     output$plotPaired = renderUI({
         validate(
-            need((input$plotType == "Paired Box Plot") | (input$plotType == "Scatter Plot") | (input$plotType == "Scatter Plot w/ Regression Line"), "Needs two variables selection")
+            need((input$plotType == "Paired Box Plot") | (input$plotType == "Scatter Plot") | (input$plotType == "Scatter Plot w/ Regression Line")| (input$plotType == "Line Plot"), "Needs two variables selection")
         )
         mydata2 = values$choices
-        selectInput('plotterpaired', 'Select paired dataset', mydata2)
+        selectInput('plotterpaired', 'Select second variable to plot', mydata2)
     })
     
     #Render User Input Widgets for if the user wants to exclude a datapoint
@@ -134,7 +195,7 @@ server <- function(input, output) {
             need(input$excluded == TRUE, "Select exclusion")
         )
         mydata3 = values$rawChoices
-        selectInput('excludeChoice', 'Select data column to exclude by:', mydata3)
+        selectInput('excludeChoice', 'Select condition variable:', mydata3)
     })
     
     output$exclusioninput2 = renderUI({
@@ -253,18 +314,19 @@ server <- function(input, output) {
         
     })
     output$table <- renderRHandsontable({
+      
         genAssign <- values$genAssign
         
 
         rhandsontable(genAssign) 
     })
     
-    observeEvent (input$loadBtn, {
-        values$loaded <-1
-        values$control <- toString(input$reference)
-        values$genAssign <- hot_to_r(input$table)
-
-    })
+    # observeEvent (input$loadBtn, {
+    #     values$loaded <-1
+    #     values$control <- toString(input$reference)
+    #     values$genAssign <- hot_to_r(input$table)
+    # 
+    # })
     
     
     
@@ -296,8 +358,8 @@ server <- function(input, output) {
         output$fishyPrint <- renderText("")
         output$siggy <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
         output$fishyCounty <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
-        output$plotso <- renderPlot(ggplot())
-        output$plotso2 <- renderPlot(ggplot())
+        output$plotso <- renderUI({img(src = "Logo.png")})
+
         output$corrMat <- NULL
         output$vifHeader <- NULL
         output$regressionVif <- NULL
@@ -305,6 +367,10 @@ server <- function(input, output) {
     
         tryCatch(
           {
+            
+        values$loaded <-1
+        values$control <- toString(input$reference)
+        values$genAssign <- hot_to_r(input$table)
         
         #Read dataset csv files to the variable 'wda'
         wwda2 <- rbindlist(lapply(input$csvs$datapath, read.csv), use.names = TRUE, fill = TRUE)
@@ -333,7 +399,7 @@ server <- function(input, output) {
 
         wwda2<- as.data.frame(wwda2)
         #Output data into analyzed data tab
-        output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+        output$contents <- renderTable(wwda2,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
         values$rawChoices <- colnames(wwda2)
         values$choices <- colnames(wwda2)
         values$control2 <- as.character(unique(wwda2$GeneName))
@@ -347,7 +413,7 @@ server <- function(input, output) {
         
         
         #Output table
-        output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+        output$contents <- renderTable(wwda2,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
       
         
         
@@ -461,7 +527,7 @@ server <- function(input, output) {
 
   
         #Output data into analyzed data tab
-        output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+        output$contents <- renderTable(wwda2,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
         values$rawChoices <- colnames(wwda2)
         values$choices <- colnames(wwda2)
         values$control2 <- as.character(unique(wwda2$GeneName))
@@ -491,8 +557,9 @@ server <- function(input, output) {
     analysis <- observeEvent(input$go,{
         
         
-      # tryCatch(
-      #   {
+      
+       tryCatch(
+         {
         
         
         #Read dataset csv files
@@ -737,7 +804,7 @@ server <- function(input, output) {
         wwda2<-wwda2[order(wwda2$GeneWeek), ]
         
         #Output data into analyzed data tab
-        output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+        output$contents <- renderTable(wwda2,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
         values$rawChoices <- colnames(wwda2)
         wwda2sub <- subset(wwda2, select = -c(CloneID, GeneName, CloneName, week, GeneWeek))
         values$choices <- colnames(wwda2sub)
@@ -751,13 +818,13 @@ server <- function(input, output) {
         
         
    
-    # },
-    # # ... but if an error occurs, tell me what happened:
-    # error=function(error_message) {
-    #   message("Unable to analyze clone tracking data")
-    #   return(NA)
-    # }
-    # )
+    },
+    # ... but if an error occurs, tell me what happened:
+    error=function(error_message) {
+      message("Unable to analyze clone tracking data")
+      return(NA)
+    }
+    )
     })
     
     
@@ -766,6 +833,7 @@ server <- function(input, output) {
     ############################################################################################################################
     
     analysis <- observeEvent(input$go, {
+ 
         
        tryCatch(
         {
@@ -806,6 +874,28 @@ server <- function(input, output) {
         #We tack the assignments onto the input data, creating a dataframe 'wwda2' with our raw data and assignments
         wwdaFull <- merge(x = wda, y = trad)
         
+        values$vchoices2 <- unique(wwdaFull$"Image Name")
+        
+        tester <- "TimePoint" %in% names(wwdaFull)
+        tester2<- input$sepTimePoints == "Preserve timepoint information"
+        tester3 <- input$sepTimePoints == "Preserve Z-plane information"
+              
+        if (isTRUE(tester2) ){
+          
+          if (isTRUE(tester) ){
+            wwdaFull$"Image Name" <- paste(wwdaFull$"Image Name", wwdaFull$TimePoint, sep=".tp.")
+            values$switchO <- TRUE
+    
+          }
+        } else if (isTRUE(tester3) ){
+          
+          wwdaFull$"Image Name" <- paste(wwdaFull$"Image Name", wwdaFull$"Z level", sep=".tp.")
+          values$switchO <- TRUE
+      
+        } else {
+          values$switchO<- FALSE
+        }
+      
         
         
         #We split the 'wwdaFull' vector. The table contains many measurements that have been repeated on several genotypes. We want to repeat this analysis for each genotype
@@ -844,6 +934,10 @@ server <- function(input, output) {
         
         #Get only the columns that are not genotype specific
         staticVals <- wwdaFull[ , !grepl( "Genotype" , names( wwdaFull) ) ]
+       
+
+         Pouch.Area <- wwdaFull[, grepl("Pouch.Area", names(wwdaFull))]
+
 
         #Loop through, get all the columns corresponding to one genotype, and store them in an array
         chal <- 1
@@ -862,12 +956,21 @@ server <- function(input, output) {
             headers <- gsub(" ", ".", headers)
             headers <- gsub("#", "X.", headers)
             
-            
+  
             colnames(genotypeVals) <- headers
+            tester <- "Pouch.Area" %in% names(genotypeVals)
+           
+            if (tester == FALSE ){
+              genotypeVals$Pouch.Area <- Pouch.Area
+ 
+            }
             
             wwda <- genotypeVals
 
-
+            
+            
+      
+            
             
             #Here we make our dataframe 'wwda2,' which has all of our data from all our z-levels collated per wing disc
             wwda2 <- data.frame(
@@ -876,22 +979,37 @@ server <- function(input, output) {
                 GeneName =  tapply(as.character(wwda$Gene.Name) , wwda$Image.Name , unique),
                 week = tapply(as.character(wwda$week) , wwda$Image.Name , unique),
                 
-                Pouch.Volume = tapply(wwda$Pouch.Area , wwda$Image.Name , sum),
+         
+                
+                
                 Clone.Volume = tapply(wwda$Clone.Area , wwda$Image.Name , sum),
                 Clone.Center.Volume = tapply(wwda$Center.Area , wwda$Image.Name , sum),
                 Clone.Border.Volume = tapply(wwda$Border.Area , wwda$Image.Name , sum),
+                Pouch.Volume = tapply(wwda$Pouch.Area , wwda$Image.Name , sum),
                 Not.Clone.Volume = tapply(wwda$Pouch.Area , wwda$Image.Name, sum) - tapply(wwda$Clone.Area , wwda$Image.Name, sum),
+         
+  
+           
                 
                 Number.of.Z.Slices = tapply(wwda$Z.level, list(wwda$Image.Name), max) - tapply(wwda$Z.level, list(wwda$Image.Name), min) + 1,
                 Percent.Clone.Coverage.of.Pouch = tapply(wwda$Clone.Area , wwda$Image.Name , sum)*100 / tapply(wwda$Pouch.Area , wwda$Image.Name , sum),
                 Border.Coverage.of.Clones = tapply(wwda$Border.Area , wwda$Image.Name , sum)*100/tapply(wwda$Clone.Area , wwda$Image.Name , sum)
                 
-                
-                
+               
             )
             
-            
+            if (isTRUE(tester2) ){
+              
+              if (isTRUE(tester) ){
+          
+                wwda2 <- cbind(wwda2, TimePoint = tapply(wwda$TimePoint, wwda$Image.Name, unique))
+              }
+            }
+            if (isTRUE(tester3) ){
 
+              wwda2 <- cbind(wwda2, z.level = tapply(wwdaFull$"Z level", wwda$Image.Name, unique))
+            }
+            
            
             #Here we add the individual cell counts information to the table, if applicable
 
@@ -919,6 +1037,8 @@ server <- function(input, output) {
                 }
             )
             
+          
+            
             tryCatch(
                 # We add the number of clones information, if its in the data table
                 { 
@@ -935,6 +1055,7 @@ server <- function(input, output) {
             )
             
             
+        
             # This variable determines if there were DCP1 counts or not
             TrueCasCounts <- 0
             #This variable tracks whether or not we were able to do individual cell counts or not
@@ -1103,7 +1224,6 @@ server <- function(input, output) {
             
             
             
-            
             #Step for fisher test of competitive index
             
             
@@ -1238,17 +1358,21 @@ server <- function(input, output) {
             colnames(wwda2) <- headers
             
             
+            
+
+            
+          
             #Merge our genotype tables together
             if (chal == 1){ values$wwda2 <- data.frame(wwda2) }
             else { values$wwda2 <- merge(values$wwda2, wwda2) }
             
             wwda2 <- values$wwda2
-            output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+            output$contents <- renderTable(wwda2,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
           
             
             #Store these values for later use, and output data visually for user
             values$wwdaArchive <- wwda2
-            output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+            output$contents <- renderTable(wwda2,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
             
             #Use the column headers to set which parameters the user can choose to analyze
             wwda2sub <- subset(values$wwda2, select = -c(File, Image.Name, GeneName, week, GeneWeek))
@@ -1259,7 +1383,23 @@ server <- function(input, output) {
 
             chal <- chal+1
         }
+        tester2<- input$sepTimePoints == "Preserve timepoint information"
+        tester3 <- input$sepTimePoints == "Preserve Z-plane information"
         
+        if (isTRUE(tester2) ){
+          
+          wwda2$Image.Name <- sub(".tp.*", '', wwda2$Image.Name)
+   
+          
+        }
+        if (isTRUE(tester3) ){
+      
+          wwda2$Image.Name <- sub(".tp.*", '', wwda2$Image.Name)
+   
+          
+        }
+        values$wwda2<-wwda2
+        values$restore<- values
     
     },
     # ... but if an error occurs, tell me what happened:
@@ -1306,6 +1446,7 @@ server <- function(input, output) {
         if (operation == '^') {transformed <- newData ^ operatorData}
         if (operation == 'modulus') {transformed <- newData %% operatorData}
         if (operation == 'log') {transformed <- log(newData, base = operatorData)}
+        
          
         #Here we make sure there are no duplicate row titles. If there are, we add a suffix
         colTitles <- colnames(values$wwda2)
@@ -1325,7 +1466,7 @@ server <- function(input, output) {
          
          #Store these values for later use, and output data visually for user
          values$wwda2 <- wwda2
-         output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+         output$contents <- renderTable(wwda2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
          
          #Use the column headers to set which parameters the user can choose to analyze
          
@@ -1419,8 +1560,7 @@ server <- function(input, output) {
             
        
             logRegDataSub <- logRegDataSub[, sapply(logRegDataSub, nlevels) != 1]
-            print (colnames(logRegDataSub))
-            print (str(logRegDataSub))
+    
             
 
 
@@ -1790,6 +1930,65 @@ server <- function(input, output) {
         
         
     })
+    
+    analysis <- observeEvent(input$columns, {
+      cols<-input$columns
+
+      
+      if(length(input$columns) == 1){
+        df <- data.frame(values$wwda2[,cols])
+        names(df) <- names(values$wwda2[,cols])
+        output$contents = renderTable(df,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
+        
+      }else{
+       
+        output$contents = renderTable(values$wwda2[,cols],  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
+        values$cols<-cols
+         }
+    })
+    
+    analysis <- observeEvent(input$columnsGo, {
+      cols<-values$cols
+      tryCatch({
+        wwda2<-values$wwda2
+        wwda2$Image.Name <- sub(".tp.*", '', wwda2$Image.Name)
+        cols2<-input$columns2
+        
+          print(1)
+ 
+          
+        
+          removed <- wwda2[wwda2$Image.Name == cols2,]
+          print(2)
+          removed <- removed[order(removed$z.level.Losers),]
+      print(3)
+          removed$z.level.Losers <- rev(removed$z.level.Losers)
+          
+        
+      print(4)
+          redux<- wwda2[wwda2$Image.Name != cols2,]
+
+        print(5)
+          sorted <- rbind(redux, removed)
+      print(6)
+        
+          values$wwda2 <- sorted
+          values$Restore <-values
+          values$wwdaArchive<-sorted
+        
+      print(7)
+          
+          output$contents <- renderTable(sorted,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
+    print(8)
+            },
+      # ... but if an error occurs, tell me what happened:
+      error=function(error_message) {
+        message("Unable to invert z-planes")
+        return(NA)
+      }
+      )
+    })
+    
                             
     
     analysis <- observeEvent(input$genPlot, { 
@@ -1808,8 +2007,11 @@ server <- function(input, output) {
         output$normalityHeader2 <- renderText("")
         output$fligner <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
         output$leveneHeader <- renderText("")
-        output$plotso <- renderPlot(ggplot())
-        output$plotso2 <- renderPlot(ggplot())
+        output$plotso <- renderUI({img(src = "Logo.png")})
+        
+        
+        
+        
         
         #This option sets the test we will use for stats.compare.means. Only basic means testing is available here.
         #All other statistical tests will be handled elsewhere
@@ -1822,7 +2024,7 @@ server <- function(input, output) {
             excluder <- paste("excludedData$", input$excludeChoice, input$excludeOperator,input$excludeValue, sep = "")
             output$Z <-renderPrint(excluder)
             values$wwda2 <- excludedData[eval(parse(text=excluder)),]
-            output$contents <- renderTable(values$wwda2,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+            output$contents <- renderTable(values$wwda2,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
             
         } else { values$wwda2<- values$wwdaArchive }
         
@@ -1865,7 +2067,7 @@ server <- function(input, output) {
             }
           }
         }
-        print (str(comparisonVectors))
+        
         
         #Extract just the column corresponding to the specified dataset to analyze
         values$idx<- grep(plottitle, colnames(values$wwda2))
@@ -1874,7 +2076,7 @@ server <- function(input, output) {
         ############################# Here we prepare our paired box plot data #########################################
         ################################################################################################################
         
-        if ((input$plotType == "Paired Box Plot")|(input$plotType == "Scatter Plot") | (input$plotType == "Scatter Plot w/ Regression Line")){
+        if ((input$plotType == "Paired Box Plot")|(input$plotType == "Scatter Plot") | (input$plotType == "Scatter Plot w/ Regression Line")| (input$plotType == "Line Plot")){
             
             #This is the second dataset which we have matched for the paired plot
             zarp <- input$plotterpaired
@@ -1920,6 +2122,7 @@ server <- function(input, output) {
             wwda2 <- wwda2[, c(idx11, idx2, idx3, idx4, idx5, idx6)]
             pairing <- wwda2
             
+          
             #extract our first dataset from the dataframe as a vector
             dataVector <- wwda2[xValP]
             names(dataVector) <- "xValues"
@@ -2038,10 +2241,10 @@ server <- function(input, output) {
         
         
         
-        tryCatch(
+         tryCatch(
             # This is what I want to do...
             {
-        
+
                 
                 #######################################
                 #Set the correlation statistical method from user input
@@ -2078,7 +2281,7 @@ server <- function(input, output) {
                 }
                 
                 
-                
+               
                 
                 values$colorv <- input$color
                 values$fillv <- input$fill
@@ -2103,8 +2306,7 @@ server <- function(input, output) {
                 }
                 
                 
-                
-                
+            
                 if(input$plotType == "Paired Box Plot"){
                     
                     # if ((xValP == "Percent.Caspase.Coverage.of.Center") | (yValP == "Percent.Caspase.Coverage.of.Center")){
@@ -2112,14 +2314,16 @@ server <- function(input, output) {
                     #     pairing <- pairing[pairing$Cells.In.Clone.Center > 5,]
                     #     
                     # }
-                    
+        
                     p1<- ggpaired(pairing, cond1 = xValP, cond2 = yValP, id = xValID,
                                   line.color = input$pairedLineColor, line.size = input$pairedLineSize,
                                   palette = "jco",  fill = values$fillv, color = values$colorv)
+                    
                     pairedvolo = TRUE
+               #
                     
                     
-                }     
+                }  
                 else if ((input$plotType == "Histogram" ) | (input$plotType == "Histogram w/ Density Plot")) {
                     
                     p1<- ggplot( values$wwda2 , aes( x= as.numeric(values$plotData), color = GeneName,  fill = GeneName )) 
@@ -2161,13 +2365,28 @@ server <- function(input, output) {
                         
                     }
                     
+                } else if (input$plotType == "Line Plot"){
+                  
+                  if(input$sepTimePoints== "Preserve Z-plane information"){
+                    test_data<- values$wwda2[,c("Image.Name", "z.level.Losers", "GeneWeek", input$plotterpaired)]
+                    test_data$Image.Name <- sub(".tp.*", '', test_data$Image.Name)
+                    names(test_data)[names(test_data)==input$plotterpaired] <-"y.axis.variable"
+                    p1<- ggplot(test_data, aes(x=z.level.Losers, y=y.axis.variable, color=GeneWeek, group=Image.Name)) + geom_line()
+                  } else if(input$sepTimePoints=="Preserve timepoint information"){
+                    test_data<- values$wwda2[,c("Image.Name", "TimePoint.Losers", "GeneWeek", input$plotterpaired)]
+                    test_data$Image.Name <- sub(".tp.*", '', test_data$Image.Name)
+                    names(test_data)[names(test_data)==input$plotterpaired] <-"y.axis.variable"
+                    p1<- ggplot(test_data, aes(x=TimePoint.Losers, y=y.axis.variable, color=GeneWeek, group=Image.Name)) + geom_line()
+                  }
+                  
+                  pairedvolo <- FALSE
                 }
                 
                 else { 
                     
                     
                     pairedvolo <- FALSE
-                    p1<- ggplot( values$wwda2 , aes( x= values$wwda2$GeneName  , y= values$plotData,  fill=values$fill, color = values$color )) 
+                    p1<- ggplot( values$wwda2 , aes( x= values$wwda2$GeneName  , y= values$plotData,  fill=values$fill, color = values$color ))
                     
                     if (input$plotType == "Dot Plot w/ Box Plot"){
                         
@@ -2185,7 +2404,7 @@ server <- function(input, output) {
                     
                 }
                 
-                if ((input$plotType != "Scatter Plot") & (input$plotType !="Scatter Plot w/ Regression Line")) {
+                if ((input$plotType != "Scatter Plot") & (input$plotType !="Scatter Plot w/ Regression Line")| (input$plotType == "Line Plot")) {
                     p1 <-  p1+ scale_x_discrete()
                 }
                 if ((desfacito > 1) & (input$facetChoice == TRUE)){
@@ -2207,23 +2426,433 @@ server <- function(input, output) {
                     
                 )
                 
+                tryCatch(
+                  # Try to run compare means.
+                  {
+                    if ((input$plotType != "Scatter Plot")&(input$plotType != "Scatter Plot w/ Regression Line")& (input$plotType != "Line Plot")){
+                      
+                      if (pairedvolo == FALSE){
+                        
+                        plotformula <- as.formula(plotformula)
+                        if(input$refgroup == "All/Basemean"){
+                          values$statistics <- compare_means(plotformula, data = values$wwda2, ref.group=".all.", method = values$method, p.adjust.method=input$pAdj,  group.by= "week")
+                          
+                        } else if (input$refgroup == "None"){
+                          values$statistics <- compare_means(plotformula, data = values$wwda2, method = values$method, p.adjust.method=input$pAdj,  group.by= "week")
+                        } else {
+                          values$statistics <- compare_means(plotformula, data = values$wwda2, method = values$method, ref.group=input$refgroup, p.adjust.method=input$pAdj,  group.by= "week")
+                        }
+                        
+                        
+                        output$statsTable <- renderTable(values$statistics, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")  
+                        output$statsHeader <- renderText("Statistical test:")
+                      } else {
+                        
+                        plotformula2 <- as.formula(values$plotformula2)
+                        
+                        if(refgroup != "None"){
+                          values$statistics <- compare_means( xValues ~ Identification, data = values$pairDataStat, method = values$method, p.adjust.method=input$pAdj, group.by= "GeneWeek",  paired = TRUE)
+                        } else {
+                          values$statistics <- compare_means( xValues ~ Identification, data = values$pairDataStat, method = values$method,  p.adjust.method=input$pAdj, group.by= "GeneWeek",  paired = TRUE)
+                        }
+                        output$statsHeader <- renderText("Pair-wise statistical test:")
+                        output$statsTable <- renderTable(values$statistics, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")  
+                      }
+                    }
+                    
+                  },
+                  # Error message for failing to run compare means
+                  error=function(error_message) {
+                    message("Could not run compare means")
+                    return(NA)
+                  }
+                )
                 
-                if (input$pDisplay == TRUE){
+                output$effectSizeTable <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+                output$effectSizeHeader <- renderText("")
+
+                tryCatch(
+                  # Try statement for effect size
+                  {
                     
                     
-                    if ((input$plotType != "Histogram")&(input$plotType != "Histogram w/ Density Plot") & (input$plotType != "Scatter Plot")&(input$plotType != "Scatter Plot w/ Regression Line")){
-                        tryCatch({
-                            refgroup <- input$refgroup
-                            if (refgroup == "None"){
-                              p1<-p1 + stat_compare_means(paired = pairedvolo, p.adjust.method=input$pAdj, comparisons=comparisonVectors, method = values$method)
-                            } else if (refgroup == "All/Basemean"){
-                              p1<-p1 + stat_compare_means(paired = pairedvolo, p.adjust.method=input$pAdj, ref.group='.all.', method = values$method)
-                            } else {
-                              p1<-p1 + stat_compare_means(paired = pairedvolo, p.adjust.method=input$pAdj, ref.group=input$refgroup, comparisons=comparisonVectors, method = values$method)
+                    
+                    estimates <- c()
+                    confHigh <- c()
+                    confLow <- c()
+                    magnitudes <- c()
+                    effectConditions <- c()
+                    effectConditions2 <-c()
+                    plotformula <- as.formula(plotformula)
+                    if (input$effectSize == "Cohen's D - Pooled"){ 
+                      hedges <- FALSE
+                      pooler <- TRUE
+                      mode <- 1
+                    } else if ( input$effectSize == "Cohen's D - Not Pooled"){
+                      hedges <- FALSE
+                      pooler <-FALSE
+                      mode <- 1
+                    } else if (input$effectSize == "Hedges' G - Pooled"){
+                      hedges <- TRUE
+                      pooler <- TRUE
+                      mode <- 1
+                    } else if (input$effectSize == "Hedges' G - Not Pooled") {
+                      hedges <- TRUE
+                      pooler <- FALSE
+                      mode <- 1
+                    } else {
+                      mode <- 2
+                    }
+                    
+                    #Get the names and identifiers of all our datasets and datapoints
+                    if (input$plotType == "Paired Box Plot"){
+                      effectData <- values$wwda2[,c(xValP, yValP, "GeneName", "week", "GeneWeek")]
+                      effectData <- na.omit(effectData)
+                      
+                    } else {
+                      effectData <- values$wwda2[,c(plottitle, "GeneName", "week", "GeneWeek")]
+                      effectData <- na.omit(effectData)
+                      
+                    }
+                    weeks <- unique(values$wwda2$week)
+                    if (input$plotType == "Paired Box Plot"){
+                      weeks <- unique(values$wwda2$GeneWeek)
+                    }
+                    
+                    x <- 0
+                    lengthotron <- length(weeks)
+                    
+                    
+                    # Loop through each experiment
+                    while (x < lengthotron ){
+                      weekname <- weeks[x+1]
+                      if (input$plotType == "Paired Box Plot"){
+                        weekData <- effectData %>% filter(GeneWeek == weekname)
+                        genes <- unique(weekData$GeneWeek)
+                        pairing = TRUE
+                        
+                        
+                      } else {
+                        weekData <- effectData %>% filter(week == weekname)
+                        genes <- unique(weekData$GeneName)
+                        pairing = FALSE
+                        
+                        if (input$refgroup =="All/Basemean"){
+                          baseData <- weekData
+                          baseData$GeneName <- "Basemean"
+                        }
+                      }
+                      
+                      # Loop through each experimental condition
+                      priorGenes <- c()
+                      
+                      
+                      count <- 0
+                      for (genename in genes){ 
+                       
+                        
+                        if(input$plotType == "Paired Box Plot"){
+                          
+                          weekData <- effectData %>% filter(GeneWeek == genename)
+                          
+                          data1 <- cbind(1, weekData[[xValP]])
+                          data2 <- cbind(2, weekData[[yValP]])
+                          
+                          expData <- rbind (data1, data2)
+                          expData <- data.frame(expData)
+                          colnames(expData)<-c("x1", "x2")
+                          
+                          
+                          if (mode == 1){
+                            effectSize <- cohen.d(x2~x1, data=expData, pooled=pooler, hedges.correction = hedges, paired = TRUE, conf.level=0.95, na.rm = TRUE )
+                          } else {
+                            effectSize <- cliff.delta(x2~x1, data=expData, conf.level=0.95, return.dm=FALSE, use.unbiased = TRUE, use.normal=FALSE, na.rm = TRUE)
+                          }
+                          
+                          estimates <- c(estimates, effectSize$estimate)
+                          mag <- as.numeric(effectSize$magnitude)
+                          
+                          if (mag == 1) {mag = 'Negligible'}
+                          if (mag == 2) {mag = 'Small'}
+                          if (mag == 3) {mag = 'Medium'}
+                          if (mag == 4) {mag = 'Large'}
+                          magnitudes <- c(magnitudes, mag)
+                          
+                          
+                          
+                          
+                          effectConditions <- rbind(effectConditions, as.character(genename))
+                          effectConditions2 <- rbind(effectConditions2, as.character(genename))
+                          conf <- effectSize$conf.int
+                          confLow<- c(confLow, effectSize$conf.int[1])
+                          confHigh <- c(confLow, effectSize$conf.int[2]) 
+                          confHigh <- confHigh[2]
+                        } else {
+                          
+                          if (genename != input$refgroup){
+                            
+                            if (input$refgroup != "None"){
+                              
+                              if (input$refgroup != "All/Basemean"){
+                                
+                                
+                                
+                                next}}
+                            
+                          }}
+                        if (input$plotType != "Paired Box Plot") {
+                            Basemean <- FALSE
+                          
+                            for (genename2 in setdiff(genes, priorGenes)) {
+                              
+                              
+                              if (input$refgroup == "All/Basemean"){
+                                if (Basemean == TRUE){
+                                  next
+                                } else {
+                                  genename2<-"lollapalooza"
+                                  Basemean <- TRUE
+         
+                                }
+                              }
+                              
+                              count <- count+1
+                              
+                              
+                              
+                              if (genename != genename2){
+                               
+                                
+                                
+                                
+                                
+                                
+                                if (input$refgroup == "All/Basemean"){
+                                  newData <- weekData[(weekData$GeneName == genename) , ]
+                                  
+                                  #Filter out dataset so it corresponds just to current experiments
+                                  
+                                  expData <- newData %>% filter((GeneName == genename))
+                                  
+                                  expData <- rbind(expData, baseData)
+                                  
+                                  
+                                  
+                                } else {
+                                  newData <- weekData[(weekData$GeneName == genename) |(weekData$GeneName == genename2), ]
+                                  
+                                  #Filter out dataset so it corresponds just to current experiments
+                                  
+                                  expData <- newData %>% filter((GeneName == genename)|(GeneName == genename2))
+                                }
+                                
+                                
+                              
+                                
+                                
+                        
+                                if (input$refgroup == "All/Basemean"){
+                                  if (mode == 1){
+                                    effectSize <-  cohen.d (plotformula, data=expData, pooled=pooler, hedges.correction = hedges, paired = pairing, conf.level=0.95, na.rm = TRUE )
+                                  } else {
+                                    effectSize <- cliff.delta(plotformula, data=expData, conf.level=0.95, return.dm=FALSE, use.unbiased = TRUE, use.normal=FALSE, na.rm = TRUE)
+                                  }
+                                  effectConditions <- rbind(effectConditions, as.character(genename))
+                                  effectConditions2 <- rbind(effectConditions2, "Basemean")
+                                } else {
+                                  if (mode == 1){
+                                    effectSize <-  cohen.d (plotformula, data=expData, pooled=pooler, hedges.correction = hedges, paired = pairing, conf.level=0.95, na.rm = TRUE )
+                                  } else {
+                                    effectSize <- cliff.delta(plotformula, data=expData, conf.level=0.95, return.dm=FALSE, use.unbiased = TRUE, use.normal=FALSE, na.rm = TRUE)
+                                  }
+                                  effectConditions <- rbind(effectConditions, as.character(genename))
+                                  effectConditions2 <- rbind(effectConditions2, as.character(genename2))
+                              }
+                                
+                                
+                          
+                                
+                                estimates <- c(estimates, effectSize$estimate)
+                                mag <- as.numeric(effectSize$magnitude)
+                                
+                                if (mag == 1) {mag = 'Negligible'}
+                                if (mag == 2) {mag = 'Small'}
+                                if (mag == 3) {mag = 'Medium'}
+                                if (mag == 4) {mag = 'Large'}
+                                magnitudes <- c(magnitudes, mag)
+                                
+                                
+                                
+                                
+      
+                                
+                                conf <- effectSize$conf.int
+                                confLow<- c(confLow, effectSize$conf.int[1])
+                                confHigh <- c(confLow, effectSize$conf.int[2]) 
+                                confHigh <- confHigh[2]
+                              
+                              
+                              
+                              }
+                              
+                              
+                              
                             }
                             
-                            print(str(comparisonVectors))
+                            
+                          
+                          priorGenes <- c(priorGenes, genename)
+                        }
+                        
+                      } 
+                      x <- x+1
+                    }
+                  
+                  
+              
+                    effectSizeRes = data.frame(Group1 = effectConditions, Group2 = effectConditions2, method = input$effectSize, estimate = estimates, magnitude = magnitudes, conf.interval.low = confLow, conf.interval.high = confHigh)
+                    
+                   
+                    
+                    output$effectSizeTable <- renderTable(effectSizeRes, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+                    output$effectSizeHeader <- renderText(paste("Effect Size Estimates:", input$effectSize, sep=" "))
+                    
+                    values$effectSizeRes <- effectSizeRes
+                    
+                  },
+                  # Error message for when unable to run effect size
+                  error=function(error_message) {
+                    message("Unable to run effect size tests")
+                    return(NA)
+                  }
+                )
+                
+                if (input$pDisplay == TRUE){
+
+
+                    if ((input$plotType != "Histogram")&(input$plotType != "Histogram w/ Density Plot") & (input$plotType != "Scatter Plot")&(input$plotType != "Scatter Plot w/ Regression Line")& (input$plotType != "Line Plot")){
+                        
+                       tryCatch({
+                            refgroup <- input$refgroup
+                            
+                            
+
+                            #ToBeAddedAsButtons
+                            step_size <- input$step_size
+                            y_offset <- input$y_offset
+                            ascending <- input$ascending
+                            tipL <- input$tipL
+                            mapSig <- input$mapSig
+                            vjustsig <- input$vjustSig
+                            barThickness <- input$barThickness
+                            textSizeSig <- input$textSizeSig
+                            sigColor<-input$sigColor
+                            adjustedP <-input$adjustedP
+                            
+                            
+                            effsize <- values$effectSizeRes
+                            anno_df <- values$statistics
+                            
+                            
+                            
+                            if (input$effectSize == "Cohen's D - Pooled"){ 
+                              effsymbol <- "d"
+                            } else if ( input$effectSize == "Cohen's D - Not Pooled"){
+                              effsymbol <- "d"
+                            } else if (input$effectSize == "Hedges' G - Pooled"){
+                              effsymbol <- "g"
+                            } else if (input$effectSize == "Hedges' G - Not Pooled") {
+                              effsymbol <- "g"
+                            } else {
+                              effsymbol <- "delta"
+                            }
+                            
+                            
+                            fullLabel <- paste("p=", round(anno_df$p, 4), sep="")
+                          
+                            if (input$refgroup != "All/Basemean"){
+                              if (input$adjustedP == TRUE){
+                                fullLabel <- paste("p.adj=", round(anno_df$p.adj, 4), sep="")
+                              }
                            
+                              
+                              if (input$effSizeDisplay == TRUE){
+                                fullLabel <- paste(fullLabel, ", ", effsymbol, "=", round(effsize$estimate,4), sep="")
+                              }
+                        
+                            } else {
+                              if (input$effSizeDisplay == TRUE){
+                                fullLabel <- paste(fullLabel, "\n", effsymbol, "=", round(effsize$estimate,4), sep="")
+                              }
+                              
+                            }
+                            
+          
+                            
+                            anno_df$fullLabel <- fullLabel
+                    
+                            
+                   
+
+                            if (input$plotType == "Paired Box Plot"){
+                              
+                                p1<-p1 + stat_compare_means(paired = pairedvolo, method = values$method)
+                              
+                            } else {
+                          
+                              if (refgroup != "All/Basemean"){
+                                  gb <- ggplot_build(p1)
+                                  ymax = gb$layout$panel_params[[1]]$y.range[2]
+                                  y_margin <-ymax*step_size
+
+                                  y_pos <- c()
+
+                                  val <- ymax-y_offset
+
+                                  for (item in comparisonVectors){
+
+                                    y_pos <- c(y_pos, val)
+
+
+                                    val<- val - y_margin
+
+                                  }
+
+                                  if (ascending == TRUE){
+                                    y_pos <- sort(y_pos, decreasing = FALSE)
+                                  }
+
+                                 
+                                  if( nrow(data.frame(anno_df)) >= 1){
+                                    if (adjustedP == TRUE){
+                                      p1<-p1 +  ggsignif::geom_signif(
+                                        data=anno_df,
+                                        aes(xmin=group1, xmax=group2, annotations=fullLabel, y_position=y_pos), map_signif_level = mapSig, manual=TRUE,  tip_length = tipL , vjust = vjustsig,   size = barThickness, textSize = textSizeSig, color = sigColor
+    
+                                      ) 
+                                    }else{
+                                      p1<-p1 +  ggsignif::geom_signif(
+                                        data=anno_df,
+                                        aes(xmin=group1, xmax=group2, annotations=fullLabel, y_position=y_pos), map_signif_level = mapSig, manual=TRUE,  tip_length = tipL , vjust = vjustsig,   size = barThickness, textSize = textSizeSig, color = sigColor
+                                        
+                                      ) 
+                                      
+                                    }}
+                              }else {
+                           
+                                gb <- ggplot_build(p1)
+                                ymax = gb$layout$panel_params[[1]]$y.range[2]
+                               
+                                val <- ymax-y_offset
+                                
+                                if( ( nrow(data.frame(anno_df)) >= 1)){
+                                
+                                if (adjustedP == TRUE){p1<-p1 + geom_text(data=anno_df, aes(y= val, x = 1:nrow(anno_df)), label = anno_df$fullLabel, textSize = textSizeSig, color = sigColor)}
+                                else {p1<-p1 + geom_text(data=anno_df, aes(y= val, x = 1:nrow(anno_df)), label = anno_df$p, textSize = textSizeSig, color = sigColor)}
+                              } }}
+
+
+
                         },
                         # ... but if an error occurs, tell me what happened:
                         error=function(error_message) {
@@ -2231,7 +2860,7 @@ server <- function(input, output) {
                             return(NA)
                         } )
                     }
-                    
+
                 }
                 
                 if(input$xDel == TRUE){
@@ -2252,25 +2881,23 @@ server <- function(input, output) {
                 }
                 
                 
-                
-                p2 <- p1
+   
                 
                 #p1 <- p1 +stat_compare_means(method = values$method)
                 
-                output$plotso<- renderPlot({
-                    
-                    
-                    
-                    p1
-                    
-                    
-                    
-                    
+                
+                
+                output$plotso<- renderUI({
+                  output$plot_test <- renderPlot({
+                   p1
+                  })
+                  
+                  plotOutput("plot_test")
                 })
                 
-                output$plotso2 <-renderPlot({
-                    p2
-                })
+
+                values$p1 <- p1
+                
                 
             },
             # ... but if an error occurs, tell me what happened:
@@ -2279,7 +2906,7 @@ server <- function(input, output) {
                 return(NA)
             }
         )
-        
+
         
         ###########################################################
         ##
@@ -2439,7 +3066,7 @@ server <- function(input, output) {
                         if (values$corrMethod == "pearson"){
                             for (i in setdiff(corrGeneWeek, priorGenes)){
                                 newData <- corrResult2 %>% filter(Group == i)
-                                output$contents <-renderTable(newData, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+                                output$contents <-renderTable(newData,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
                                 for (j in corrGeneWeek){
                                     newData2 <- corrResult2 %>% filter(Group == j)
                                     
@@ -2500,7 +3127,7 @@ server <- function(input, output) {
                                 if (weekname != weekname2){
                                     
                                     newData2 <- newData %>% filter((GeneWeek == weekname) | (GeneWeek == weekname2))
-                                    output$contents <- renderTable(newData2, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
+                                    output$contents <- renderTable(newData2,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
                                     
                                     newData.vars <-  newData2 %>% dplyr::select(-one_of("GeneWeek"))
                                     
@@ -2682,7 +3309,7 @@ server <- function(input, output) {
                     output$normalityHeader <- renderText(plottitle) 
                     
                     
-                    if ((input$plotType == "Paired Box Plot") | (input$plotType == "Scatter Plot") | (input$plotType == "Scatter Plot w/ Regression Line")){
+                    if ((input$plotType == "Paired Box Plot") | (input$plotType == "Scatter Plot") | (input$plotType == "Scatter Plot w/ Regression Line")| (input$plotType == "Line Plot")){
                         
                         wwda2 <- values$wwda2
                         
@@ -2719,181 +3346,14 @@ server <- function(input, output) {
         
         
         
-        output$effectSizeTable <- renderTable(data.frame(), hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
-        output$effectSizeHeader <- renderText("")
 
-        tryCatch(
-            # Try statement for effect size
-            {
-              estimates <- c()
-              confHigh <- c()
-              confLow <- c()
-              magnitudes <- c()
-              effectConditions <- c()
-              effectConditions2 <-c()
-              plotformula <- as.formula(plotformula)
-              
-              #Get the names and identifiers of all our datasets and datapoints
-              effectData <- values$wwda2[,c(plottitle, "GeneName", "week", "GeneWeek")]
-              effectData <- na.omit(effectData)
-              weeks <- unique(values$wwda2$week)
-              if (input$plotType == "Paired Box Plot"){
-                  weeks <- unique(values$wwda2$GeneWeek)
-              }
-              
-              x <- 0
-              lengthotron <- length(weeks)
-              
-              
-              # Loop through each experiment
-              while (x < lengthotron ){
-                  weekname <- weeks[x+1]
-                  if (input$plotType == "Paired Box Plot"){
-                      weekData <- effectData %>% filter(GeneWeek == weekname)
-                      genes <- c(xValP, yValP)
-                      pairing = TRUE
-                  } else {
-                      weekData <- effectData %>% filter(week == weekname)
-                      genes <- unique(weekData$GeneName)
-                      pairing = FALSE
-                  }
-                  
-                  # Loop through each experimental condition
-                  priorGenes <- c()
-                  for (genename in genes){
-                      
-                    
-                      for (genename2 in setdiff(genes, priorGenes)) {
-                    
-                          
-                          if (genename != genename2){
-                              
-                       
-                
-                                  if (input$effectSize == "Cohen's D - Pooled"){ 
-                                    hedges <- FALSE
-                                    pooler <- TRUE
-                                    mode <- 1
-                                  } else if ( input$effectSize == "Cohen's D - Not Pooled"){
-                                    hedges <- FALSE
-                                    pooler <-FALSE
-                                    mode <- 1
-                                  } else if (input$effectSize == "Hedges' G - Pooled"){
-                                    hedges <- TRUE
-                                    pooler <- TRUE
-                                    mode <- 1
-                                  } else if (input$effectSize == "Hedges' G - Not Pooled") {
-                                    hedges <- TRUE
-                                    pooler <- FALSE
-                                    mode <- 1
-                                  } else {
-                                    mode <- 2
-                                  }
-                                  
-                                  newData <- weekData[(weekData$GeneName == genename) |(weekData$GeneName == genename2), ]
-                                
-                                  #Filter out dataset so it corresponds just to current experiments
-  
-                                  expData <- newData %>% filter((GeneName == genename)|(GeneName == genename2))
-                                  
-                                  if (mode == 1){
-                                    effectSize <- cohen.d(plotformula, data=expData, pooled=pooler, hedges.correction = hedges, paired = pairing, conf.level=0.95, na.rm = TRUE )
-                                  } else {
-                                    effectSize <- cliff.delta(plotformula, data=expData, conf.level=0.95, return.dm=FALSE, use.unbiased = TRUE, use.normal=FALSE, na.rm = TRUE)
-                                  }
-                                  
-                                  estimates <- c(estimates, effectSize$estimate)
-                                  mag <- as.numeric(effectSize$magnitude)
-                                
-                                  if (mag == 1) {mag = 'Negligible'}
-                                  if (mag == 2) {mag = 'Small'}
-                                  if (mag == 3) {mag = 'Medium'}
-                                  if (mag == 4) {mag = 'Large'}
-                                  magnitudes <- c(magnitudes, mag)
-                                  
-                                  
-                                  
-                                 
-                                  effectConditions <- rbind(effectConditions, as.character(genename))
-                                  effectConditions2 <- rbind(effectConditions2, as.character(genename2))
-                                  conf <- effectSize$conf.int
-                                  confLow<- c(confLow, effectSize$conf.int[1])
-                                  confHigh <- c(confLow, effectSize$conf.int[2]) 
-                                  confHigh <- confHigh[2]
-                                 
-              
-                                  
-                              
-                              
-                              
-                          }
-                          
-                          
-                      }
-                      priorGenes <- c(priorGenes, genename)
-                  } 
-                  x <- x+1
-              }
-              
-              
-              effectSizeRes = data.frame(Group1 = effectConditions, Group2 = effectConditions2, method = input$effectSize, estimate = estimates, magnitude = magnitudes, conf.interval.low = confLow, conf.interval.high = confHigh)
-                
-              output$effectSizeTable <- renderTable(effectSizeRes, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
-              output$effectSizeHeader <- renderText(paste("Effect Size Estimates:", input$effectSize, sep=" "))
-
-            },
-        # Error message for when unable to run effect size
-        error=function(error_message) {
-            message("Unable to run effect size tests")
-            return(NA)
-        }
-        )
         
 
        
         
         
         
-        tryCatch(
-            # Try to run compare means.
-            {
-                if ((input$plotType != "Scatter Plot")&(input$plotType != "Scatter Plot w/ Regression Line")){
-                    
-                    if (pairedvolo == FALSE){
-                      
-                        plotformula <- as.formula(plotformula)
-                        if(input$refgroup == "All/Basemean"){
-                          values$statistics <- compare_means(plotformula, data = values$wwda2, ref.group=".all.", method = values$method, p.adjust.method=input$pAdj,  group.by= "week")
-                          
-                        } else if (input$refgroup == "None"){
-                          values$statistics <- compare_means(plotformula, data = values$wwda2, method = values$method, p.adjust.method=input$pAdj,  group.by= "week")
-                        } else {
-                          values$statistics <- compare_means(plotformula, data = values$wwda2, method = values$method, ref.group=input$refgroup, p.adjust.method=input$pAdj,  group.by= "week")
-                        }
-                        
-
-                        output$statsTable <- renderTable(values$statistics, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")  
-                        output$statsHeader <- renderText("Statistical test:")
-                    } else {
-                        
-                        plotformula2 <- as.formula(values$plotformula2)
-                        if(refgroup != "None"){
-                          values$statistics <- compare_means( xValues ~ Identification, data = values$pairDataStat, method = values$method, ref.group=input$refgroup, p.adjust.method=input$pAdj, group.by= "GeneWeek",  paired = TRUE)
-                        } else {
-                          values$statistics <- compare_means( xValues ~ Identification, data = values$pairDataStat, method = values$method,  p.adjust.method=input$pAdj, group.by= "GeneWeek",  paired = TRUE)
-                        }
-                        output$statsHeader <- renderText("Pair-wise statistical test:")
-                        output$statsTable <- renderTable(values$statistics, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")  
-                    }
-                }
-                
-            },
-            # Error message for failing to run compare means
-            error=function(error_message) {
-                message("Could not run compare means")
-                return(NA)
-            }
-        )
+        
         
         #############################################################
         ##
@@ -2976,4 +3436,7 @@ server <- function(input, output) {
         
     }
     )
-}
+
+    
+    }
+
