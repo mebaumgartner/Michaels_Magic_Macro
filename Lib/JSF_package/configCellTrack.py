@@ -1,7 +1,7 @@
 minCellSize=1.0
 cellCountRadius=1.0
 morphoSeg=18.0
-filterWeight=1.7
+filterWeight=2.1
 seedChoiceCell=False
 seedChannelCell='2'
 invertSeedCell=True

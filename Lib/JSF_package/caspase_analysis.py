@@ -125,7 +125,7 @@ def caspase_segmentor (cal, imp, rm, Title, stackno, pouch, caspaseSegment, dcp1
 
 ################################
 #This is our caspase analysis function
-def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefArray, numGenotypes, timepoint, caspaseSegment, excludinator, seedIDcas, segmentedIDs2):
+def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefArray, numGenotypes, timepoint, caspaseSegment, excludinator, seedIDcas, segmentedIDs2, iWidth):
 
 	import JSF_package
 	from JSF_package.configDeathSeg import dcp1Booster, lowPass, highPass, multVal, outVal, seedChoiceCas, seedChannelCas, minSeedSizeCas, invertSeedCas

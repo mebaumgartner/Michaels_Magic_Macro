@@ -354,7 +354,49 @@ def weka3D(IDs, method, genotypeNames):
 	segmentedIDs.setCalibration(IDs.getCalibration())
 	
 	return segmentedIDs, genotypeNames
+
+##################################################
+def find_minimum_distance(roi, x, y):
+
+	from ij.gui import ShapeRoi
+	from math import sqrt
 	
+
+	
+
+	roi = ShapeRoi(roi)
+	minimum = 999999999999999999999999999999999999999999999999
+	xmin = 0
+	ymin=0
+	rA = roi.getRois()
+	
+	for roi in rA:
+		count = 0
+		poly = roi.getInterpolatedPolygon(2, True)
+
+		dx = x-xmin
+		dy = y-ymin
+		
+		
+	
+		
+		while count < poly.npoints:
+			dx = x-poly.xpoints[count]
+			dy = y-poly.ypoints[count]
+			distance = sqrt((dx*dx)+(dy*dy))
+			if distance < minimum:
+				minimum = distance
+				xmin = poly.xpoints[count]
+				ymin = poly.ypoints[count]
+	
+			count += 1
+	
+		
+
+
+	
+	return xmin, ymin
+
 
 
 

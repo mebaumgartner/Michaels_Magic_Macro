@@ -9,7 +9,7 @@
 
 #######################			
 # This function is where we perform our overall clone analysis
-def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceROIs, borderArray, IDs3, cellROIs, numGenotypes, timepoint, colorArray, seedIDclone, segmentedIDs, genotypeNames, roiMask, iWidth):
+def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceROIs, borderArray, IDs3, cellROIs, numGenotypes, timepoint, colorArray, seedIDclone, segmentedIDs, genotypeNames, roiMask, iWidth,deluxeCell, fullCloneROIArray):
 
 	#Import user defined variables
 	import JSF_package
@@ -383,12 +383,24 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 		try:
 			x = resultant.getRoi()
 			x = ShapeRoi(x)
+			if(deluxeCell == True):
+				fullCloneROIArray[genotypeChannel-1]=fullCloneROIArray[genotypeChannel-1] +[x.clone()]
+#				impBordMask = IJ.createImage("Untitled", "8-bit white", iWidth, iHeight, 1)
+#				impBordMask.setRoi(x)
+#				IJ.setForegroundColor(0, 0, 0)
+#				IJ.run("Line Width...", "line=0")
+#				IJ.run(impBordMask, "Draw", "")
+#				fullCloneROIArray[genotypeChannel-1]=fullCloneROIArray[genotypeChannel-1] +[impBordMask]
+		
 			pholder = resultant.getRoi()
 			pholder = ShapeRoi(pholder)
 		except:
 			resultant.setRoi(5,iHeight+20,1,1)
 			x = resultant.getRoi()
 			x = ShapeRoi(x)
+			if deluxeCell == True:
+				fullCloneROIArray[genotypeChannel-1] = fullCloneROIArray[genotypeChannel-1] +["<empty>"]
+				
 			pholder = x.clone()
 	
 		
@@ -600,7 +612,7 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 
 	if JSF_package.configRoi.halfHalfNC == True:
 		Roido = roidoArchive
-	return Title, genotypesImpArray, noClones, caliber, sliceROIs, borderArray, cloneMask, borderMask, cloneImp, cloneBorderImp, Roido, genotypeNames
+	return Title, genotypesImpArray, noClones, caliber, sliceROIs, borderArray, cloneMask, borderMask, cloneImp, cloneBorderImp, Roido, genotypeNames, fullCloneROIArray
 		
 ##################################
 # This is the clone segmentation function

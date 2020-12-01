@@ -545,6 +545,8 @@ def Open_GUI():
 		gd.addChoice("Specify nuclear stain channel for single cell filtering", ["Disabled"] + Numbers, str(cfg.DAPIchannel))
 		gd.addToSameRow()
 		gd.addStringField("Specify single cell segmentation channel (separate multiple channels with commas):", str(cfg.cellCountChannel))
+		gd.setInsets(0,0,0)
+		gd.addCheckbox("Analyze single cells for spatial and fluorescence properties?", cfg.cellCountDeluxe)
 
 		gd.setInsets(0,0,0)
 		gd.addMessage("Cell Death Segmentation Settings", Font("Sanserif", Font.BOLD, 12))
@@ -557,6 +559,8 @@ def Open_GUI():
 		gd.addStringField("Specify cell death segmentation channel (separate multiple channels with commas):", str(cfg.dcp1Channel))
 		gd.setInsets(0,0,0)
 		gd.addCheckbox("Count number of individual cell death events?", cfg.dcp1Counting)
+		gd.addToSameRow()
+		gd.addCheckbox("Analyze single cells for spatial and fluorescence properties?", cfg.dcp1Deluxe)
 		gd.addButton("Set advanced cell death event counting parameters", ButtonClic())
 
 		gd.setInsets(0,0,0)
@@ -683,6 +687,12 @@ def Open_GUI():
 			
 			dcp1Counting = gd.getNextBoolean()
 			output = output+"dcp1Counting="+str(dcp1Counting)+"\n"
+
+			cellCountDeluxe = gd.getNextBoolean()
+			output=output+"cellCountDeluxe="+str(cellCountDeluxe)+"\n"
+
+			dcp1Deluxe = gd.getNextBoolean()
+			output=output+"dcp1Deluxe="+str(dcp1Deluxe)+"\n"
 			
 			fluoChoice = gd.getNextBoolean()
 			output = output+"fluoChoice="+str(fluoChoice)+"\n"
