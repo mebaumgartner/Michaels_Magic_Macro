@@ -1,0 +1,12 @@
+name: Macro_Analysis_App
+title: Macro_Analysis_App
+username:
+account: michaelbaumgartner
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2174861
+bundleId: 4243143
+url: https://michaelbaumgartner.shinyapps.io/Macro_Analysis_App/
+when: 1613695928.41094
+asMultiple: FALSE
+asStatic: FALSE

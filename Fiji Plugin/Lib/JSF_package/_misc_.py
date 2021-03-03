@@ -1,0 +1,407 @@
+#
+#
+#
+# These are miscellaneous functions that are used in Michael's Magic Macro
+#
+#
+#
+
+##############
+#This makes sure the binary mask was made in the correct format.
+def mask_confirmer(a, b):
+
+	from ij import IJ
+	from ij.measure import ResultsTable
+
+	print 1
+	#Create an ROI in a blank region of the image (created by resizing the canvas)
+	IJ.run("Clear Results")
+	b.setRoi(1, a, 1, 1)
+
+	print 2
+	#Measure the area and get the maximum pixel value
+	IJ.run(b, "Measure", "")
+	IJ.run(b, "Select None", "")
+	rt = ResultsTable.getResultsTable()
+	peepers = rt.getStringValue("Max",0)
+	IJ.run("Clear Results")
+
+	print 3
+	#Since this is a binary image with known parameters, if the Max value is 255, the image needs to be inverted
+	if float(peepers)==255:
+		IJ.run(b, "Invert", "")
+	print 4
+	
+###############
+#This function determines if an ROI is empty or not. If it is, we replace it with a little placeholder ROI
+def selection_confirmer(ROI, iHeight, imp):
+
+	from ij.gui import Plot, ShapeRoi
+
+	#Initialize variables and make sure our ROI is in the correct format
+	if not ROI:
+		#If the ROI is empty, we replace it with a placeholder ROI and return an "<empty>" string that we can use to later identify it
+		imp.setRoi(5,iHeight+20,1,1)
+		ROI = imp.getRoi()
+		ROI = ShapeRoi(ROI)
+		emptyRoi = "<empty>"
+
+		return ROI, emptyRoi
+		
+
+	if ROI:
+
+		emptyRoi = ""
+		ROI = ShapeRoi(ROI)
+	
+		#Determinining if an ROI is empty is actually tricky. How I do it is by getting the string (which has the general details), and finding 
+		#What it's width is. If the width of the ROI is zero, it is empty for our purposes
+		x = str(ROI).find("width")
+		x = str(ROI)[x+6:x+7]
+		if x == "0":
+	
+			#If the ROI is empty, we replace it with a placeholder ROI and return an "<empty>" string that we can use to later identify it
+			imp.setRoi(5,iHeight+20,1,1)
+			ROI = imp.getRoi()
+			ROI = ShapeRoi(ROI)
+			emptyRoi = "<empty>"
+
+	else:
+
+			#If the ROI is empty, we replace it with a placeholder ROI and return an "<empty>" string that we can use to later identify it
+			imp.setRoi(5,iHeight+20,1,1)
+			ROI = imp.getRoi()
+			ROI = ShapeRoi(ROI)
+			emptyRoi = "<empty>"
+	return ROI, emptyRoi
+		
+############
+#This function opens just  the channel of the series we want and keeps it as a stack.
+def channel_open(file_path, s, c):
+
+	from loci.plugins import BF
+	from loci.plugins.in import ImporterOptions
+	from ij import IJ
+	
+	s = s-1
+	c = c-1
+	options = ImporterOptions()
+	options.setId(file_path)
+	options.setColorMode(ImporterOptions.COLOR_MODE_GRAYSCALE)
+	options.setCBegin(s, c)
+	options.setCEnd(s,c)  
+	options.setSeriesOn(s,True)
+	imps = BF.openImagePlus(options)
+	for imp in imps:
+		return imp
+
+###########
+#This function is used to open all the channels we need without creating duplicates
+
+def channel_organize_and_open(indices, inPath, timeFinish, timepoint ):
+
+	from JSF_package._misc_ import channel_open
+	import JSF_package
+	from JSF_package import _misc_, caspase_analysis, cell_tracking, clone_analysis, configBasic, configCellTrack, configCloneSeg, configDeathSeg, configDeathTrack, configRoi, configSave, seeded_region_growing, speckles_analysis, start_up, tracking_and_outputs, user_inputs_GUI
+	from JSF_package.configBasic import ROIchannel, preProcess, cloneChannel, timelapse, speckleChannel, DAPIchannel, cellCountChannel, dcp1Channel, fluoChannel, fluoChoice, speckle, ROIseg, singleCellMethod, cloneSeg, cellDeathSegMethod
+	from JSF_package.configCloneSeg import seedChannelClones, seedChoiceClones
+	from JSF_package.configCellTrack import seedChannelCell, seedChoiceCell
+	from JSF_package.configDeathSeg import seedChoiceCas, seedChannelCas
+	from JSF_package.configRoi import seedChannel, seedChoice
+	from ij import ImageStack, ImagePlus, IJ
+	
+	primaryChannels = []
+	secondaryChannels = []
+	
+
+	
+	#Load the clone channel
+	primaryChannels = primaryChannels + [cloneChannel]
+	if seedChoiceClones == True and seedChannelClones != "ROI Mask":
+		secondaryChannels = secondaryChannels  + [int(seedChannelClones)]
+
+	#Load the cell death segmentation channel
+	if cellDeathSegMethod != "Disabled":
+		primaryChannels = primaryChannels + [dcp1Channel]
+		if seedChoiceCas == True:
+			secondaryChannels = secondaryChannels  + [int(seedChannelCas)]
+
+	#Load the speckle channel
+	if speckle == True:
+		secondaryChannels = secondaryChannels + [int(speckleChannel)]
+
+	#Load the fluorescence channel
+	if fluoChoice == True:
+#		if preProcess == "None":
+#			secondaryChannels = secondaryChannels + [int(fluoChannel)]
+#		else:
+		primaryChannels = primaryChannels + [fluoChannel]
+
+	#Load the ROI channel
+	if ROIseg != "Manual Selections" and ROIseg != "Analyze Entire Image":
+		primaryChannels = primaryChannels + [ROIchannel]
+		if seedChoice == True:
+			secondaryChannels = secondaryChannels + [int(seedChannel)]
+
+	#Load the single cell segmentation channel
+	if singleCellMethod != "Disabled":
+		primaryChannels = primaryChannels + [cellCountChannel]
+		if seedChoiceCell == True:
+			secondaryChannels = secondaryChannels  + [int(seedChannelCell)]
+		if DAPIchannel != "Disabled":
+			secondaryChannels = secondaryChannels + [int(DAPIchannel)]
+
+
+	colorsOfChannels = []
+	channelsToOpen = []
+	for item in primaryChannels:
+		item.replace(" ", "")
+		item.strip(",")
+		x = item.split(",")
+
+		posColors = ["rR", "gG", "bB", "cC", "mM", "yY"]
+		colorIdex = []
+		for s in x:
+			try:
+				int(s)
+				domColor = 0
+			except:
+				colPicker = s[-1]
+				if colPicker in posColors[0]:
+					domColor = "Red"
+				elif colPicker in posColors[1]:
+					domColor = "Green"
+				elif colPicker in posColors[2]:
+					domColor = "Blue"
+				elif colPicker in posColors[3]:
+					domColor = "Cyan"
+				elif colPicker in posColors[4]:
+					domColor = "Magenta"
+				elif colPicker in posColors[5]:
+					domColor = "Yellow"
+				else:
+					domColor = 0
+			colorIdex = colorIdex + [domColor]
+
+		fullColorNames = ["Red", "Green", "Blue", "Cyan", "Magenta", "Yellow"]
+		unclaimedColors = [Zz for Zz in fullColorNames if Zz not in colorIdex]
+		new = 0
+		while new < len(colorIdex):
+			checkCol = colorIdex[new]
+			if checkCol == 0:
+				colorIdex[new] = unclaimedColors[0]
+				unclaimedColors = unclaimedColors[1:]
+			new += 1
+
+		import re
+		new = 0
+		while new < len(x):
+			a = x[new]
+			x[new] = re.sub('[^0-9]','', a)
+			new += 1
+				
+			
+		
+		x = [ int(y) for y in x ]
+			
+		channelsToOpen = channelsToOpen + x
+		colorsOfChannels = colorsOfChannels +[colorIdex]
+	
+
+	
+	
+	
+	channelsToOpen = channelsToOpen + secondaryChannels
+	channelsToOpen = sorted(list(set(channelsToOpen)))
+	channelRange = range(1, channelsToOpen[-1]+1)
+
+	try:
+	
+		count = 1
+		pullArray = []
+		for item in channelRange:
+			if item in channelsToOpen:
+				IDs = channel_open(inPath, int(indices), item)
+
+				#If not 8-bit, coerce to 8-bit
+				
+				impType = IDs.getBitDepth()
+				if impType != 8:
+					IJ.run(IDs, "8-bit", "")
+					IJ.log("Image "+str(IDs.getTitle())+" coerced into 8-bit image")
+
+					
+				Title = IDs.getTitle()
+				calibration = IDs.getCalibration()
+				if timepoint == 1:
+					dimensions = IDs.getDimensions()
+					timeFinish =  dimensions[4]
+				stack = IDs.getImageStack()
+				ch = ImageStack(IDs.width, IDs.height)
+				for i in range(1, IDs.getNSlices() + 1):
+				  	index = IDs.getStackIndex(int(item), i, timepoint)
+					ch.addSlice(str(i), stack.getProcessor(index))
+				IDs = ImagePlus("Channel " + str(item), ch)
+				IDs.setCalibration(calibration)
+				IDs.setTitle(Title)
+			else:
+				IDs = 0
+			pullArray = pullArray + [[count, IDs]]
+			count += 1
+
+	except:
+		pullArray = "Error"
+	
+	return pullArray, timeFinish, colorsOfChannels
+
+############################################################
+#This function returns the channel we want to work on. If the user specified multiple channels for analysis, we open and merge them all
+def decode_channels(idSearch, pullArray, colorsOfChannels, multipleC):
+
+	from ij.plugin import RGBStackMerge
+	from ij import IJ
+	import re
+
+	
+	
+	#This is the list of characters the user can input to specify channel colors
+	acceptableStrings = ['r', 'R', 'g', 'G', 'b','B', 'c', 'C', 'm', 'M', 'y', 'Y']
+	
+	#If there are multiple channels, we need to pull the colorSet variable from the colorsOfChannels array
+	if multipleC == 1:
+		colorSet = colorsOfChannels[0]
+
+	#If idSearch is not an integer, we need to unpack all the information that there is in it.
+	if type(idSearch) != int:
+
+
+		res1 = " ".join(re.split("[^a-zA-Z]*", idSearch)) 
+
+		#Get rid of white spaces and split at commas
+		idSearch.replace(" ", "")
+		idSearch.strip(",") 
+		idSearch = idSearch.split(",")
+
+		count = 0
+		while count < len(idSearch):
+			idSearch[count] = re.sub('[^0-9]','', idSearch[count])
+			count +=1
+		idSearch = [ int(newChannelZ) for newChannelZ in idSearch ]
+	else:
+		idSearch = [idSearch]
+
+	#Initialize a variable to track which images we are going to assign to each channel
+	impsToPull = []
+	
+	
+	for item in pullArray:
+
+		if int(item[0]) in idSearch:
+			impsToPull = impsToPull + [item[1]]
+			Title = item[1].getTitle()
+	if len(impsToPull) == 1:
+		baseImp = impsToPull[0]
+		if multipleC == 1:
+			IJ.run(baseImp, colorSet[0], "")
+	else:
+		concat = RGBStackMerge()
+		if multipleC == 1:
+			count = 0
+			while count < len(impsToPull):
+				IJ.run(impsToPull[count], colorSet[count], "")
+				count +=1
+		baseImp = concat.mergeChannels(impsToPull, True)
+
+		rgbSwitch = False
+		rgbCount = 0
+		while rgbCount < len(res1):
+			check = res1[rgbCount]
+			
+#			if check in acceptableStrings:
+#				rgbSwitch = True
+				
+			rgbCount+=1
+			
+		if rgbSwitch == True:
+			IJ.run(baseImp, "RGB Color", "slices")
+		
+	baseImp.setTitle(Title)
+
+
+	if multipleC==True:
+		colorsOfChannels = colorsOfChannels[1:]
+	return baseImp, colorsOfChannels
+
+########################################################################################
+# Run weka segmentation in 3d mode
+def weka3D(IDs, method, genotypeNames):
+
+
+	if method.endswith(".model") == False:
+		return 0, genotypeNames
+	if method.find("_3D_.") == -1:
+		return 0, genotypeNames
+
+	
+
+	from trainableSegmentation import WekaSegmentation
+	import os
+	
+	segmentator = WekaSegmentation( True  )
+	classifierPath = os.path.join(os.getcwd(), "jars", "Lib", "JSF_package", "Weka_Models", method )
+	segmentator.loadClassifier(classifierPath)
+	segmentedIDs = segmentator.applyClassifier(IDs, 0, False)
+
+	genotypeNames = segmentator.getClassLabels()
+
+	#Calibrate the image
+	segmentedIDs.setCalibration(IDs.getCalibration())
+	
+	return segmentedIDs, genotypeNames
+
+##################################################
+def find_minimum_distance(roi, x, y):
+
+	from ij.gui import ShapeRoi
+	from math import sqrt
+	
+
+	
+
+	roi = ShapeRoi(roi)
+	minimum = 999999999999999999999999999999999999999999999999
+	xmin = 0
+	ymin=0
+	rA = roi.getRois()
+	
+	for roi in rA:
+		count = 0
+		poly = roi.getInterpolatedPolygon(2, True)
+
+		dx = x-xmin
+		dy = y-ymin
+		
+		
+	
+		
+		while count < poly.npoints:
+			dx = x-poly.xpoints[count]
+			dy = y-poly.ypoints[count]
+			distance = sqrt((dx*dx)+(dy*dy))
+			if distance < minimum:
+				minimum = distance
+				xmin = poly.xpoints[count]
+				ymin = poly.ypoints[count]
+	
+			count += 1
+	
+		
+
+
+	
+	return xmin, ymin
+
+
+
+
+	
