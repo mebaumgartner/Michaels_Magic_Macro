@@ -5,4 +5,4 @@ minSeedSize=50.0
 roiPost='Despeckle'
 halfHalf=False
 blurRoi=0.0
-halfHalfNC=False
+halfHalfNC=True

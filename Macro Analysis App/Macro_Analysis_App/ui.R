@@ -181,10 +181,10 @@ shinyUI(
                                                            textInput("pairedLineColor", "Set paired line color:", "grey"),
                                                            
                                                            h3("Color dots according to groupings?"),
-                                                           selectInput("cgDot", "Group Dot Color By:", choices=c("No color grouping", "GeneName", "week", "GeneWeek")),
-                                                           selectInput("cgDotFill", "Group Dot Fill Color By:", choices=c("No color grouping", "GeneName", "week", "GeneWeek")),
-                                                           selectInput("cgColor", "Group Plot Color By:", choices=c("No color grouping", "GeneName", "week", "GeneWeek")),
-                                                           selectInput("cgColorFill", "Group Plot Color Fill By:", choices=c("No color grouping", "GeneName", "week", "GeneWeek"))),
+                                                           selectInput("cgDot", "Group Dot Color By:", choices=c("No color grouping", "Condition", "Experiment", "ConditionAndExperiment")),
+                                                           selectInput("cgDotFill", "Group Dot Fill Color By:", choices=c("No color grouping", "Condition", "Experiment", "ConditionAndExperiment")),
+                                                           selectInput("cgColor", "Group Plot Color By:", choices=c("No color grouping", "Condition", "Experiment", "ConditionAndExperiment")),
+                                                           selectInput("cgColorFill", "Group Plot Color Fill By:", choices=c("No color grouping", "Condition", "Experiment", "ConditionAndExperiment"))),
                                                     
                                                     column(2, 
                                                            h3("Customize p-value display"),
@@ -202,7 +202,7 @@ shinyUI(
                                                            hr(),
                                                            h3("Organize data"),
                                                            
-                                                           checkboxInput("orderWeek", "Sort by week?", FALSE),
+                                                           checkboxInput("orderWeek", "Sort by Experiment?", FALSE),
                                                            checkboxInput("orderGene", "Sort by gene?", FALSE),
                                                            checkboxInput("facetChoice", "Facet output plots?", TRUE),
                                                            checkboxInput("lm", "lm regression line?", TRUE),

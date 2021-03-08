@@ -66,16 +66,15 @@ def caspase_segmentor (cal, imp, rm, Title, stackno, pouch, caspaseSegment, dcp1
 		IJ.run(imp2,"Convert to Mask", "")
 		
 		IJ.run(imp2, "Canvas Size...", "width="+str(imp2.getWidth())+" height="+str(iHeight+100)+" position=Top-Left zero")
-		print 55
 		
 		mask_confirmer(iHeight + 20, imp2)	
 		
 
-		print "e"
+		
 
 		#Make sure no selections are lingering on the images
 		IJ.run(imp2, "Create Selection", "")
-		print 66
+
 		clearRoi = ShapeRoi(imp2.getRoi())
 	
 		imp.setRoi(clearRoi)
@@ -352,12 +351,12 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 	pHo = IJ.run(imp, "Create Selection", "")
 	pHo = imp.getRoi()
 
-	print "start"
+
 	if JSF_package.configBasic.dcp1Counting == 1:
 
 		from inra.ijpb.watershed import Watershed
 
-		print 1
+
 		
 		#we get our images and clean them up a little bit in preparation for the watershed
 		IJ.run(casMask2, "Invert", "")
@@ -366,13 +365,13 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 		IJ.run(casMask2, "Invert", "")
 
 
-		print 2
+
 		
 		#Run the watershed
 		newImp = Watershed.computeWatershed(countImp,  casMask2, 4, 0, 255)
 		forCounts = newImp.duplicate()
 
-		print 3
+	
 			
 		#Now we get the watershed-ed image, and put into a properly formatted binary image
 		IJ.setThreshold(newImp, -1000000000000000000000000000000.000000000, 0.000000000)
@@ -382,7 +381,7 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 		IJ.run(newImp, "Canvas Size...", "width="+str(newImp.getWidth())+" height="+str(iHeight)+" position=Top-Left zero")
 		IJ.run(newImp, "Invert", "")
 
-		print 4
+
 
 		#get the rois and add them to the manager
 		IJ.run(newImp, "Create Selection", "")
@@ -390,7 +389,7 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 		IJ.run(newImp, "Add to Manager", "")
 		x = rm.getCount()
 
-		print 5
+
 
 		#scrap the images we aren't using anymore
 		countImp.hide()
@@ -399,7 +398,7 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 		casMask2.flush()
 		IJ.runMacro("run('Close All')")
 
-		print 6
+
 
 		#We then feed this image into the caspase_segmentor function
 		IJ.setForegroundColor(255, 255, 255)
@@ -412,19 +411,19 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 		cal = casImp.getCalibration()
 		caliber = cal.pixelHeight
 		
-		print 7
+
 
 		caspaseSegment = caspase_segmentor (cal, forCounts, rm, Title, stackno, pouch, caspaseSegment,  dcp1Radius, caliber, minCasSize, timepoint, excludinator, iHeight)
 
-		print 8
+
 
 	#We create a selection from the mask and extract the ROI
-	print 9
+
 	x = pHo
-	print 10
+
 	IJ.run(imp, "Canvas Size...", "width="+str(iWidth)+" height="+str(iHeight+100)+" position=Top-Left zero")
 
-	print "end"
+
 	#If the ROI exists, we find its intersection with the pouch and make a new ROI
 	if x:
 		x = ShapeRoi(x)
@@ -475,7 +474,7 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 	IJ.setForegroundColor(255, 255, 255)
 	cas = ShapeRoi(rm.getRoi(x))
 
-	print 8
+
 	
 	#Set the red color for the caspase image, convert to RGB
 	if seedChoiceCas == True:
@@ -500,7 +499,7 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 	cas = ShapeRoi(rm.getRoi(x))
 
 
-	print 9
+
 	loopCounter = 0
 	while loopCounter < numGenotypes:
 
@@ -564,7 +563,7 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 		else:
 			sliceROIs.extend([x-4, x-3, x-2, x-1])
 
-	print 10
+
 			
 	return sliceROIs, casMask, casImp, casCasImp, casRefArray
 

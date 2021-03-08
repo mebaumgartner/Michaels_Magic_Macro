@@ -244,11 +244,11 @@ class ButtonClic(ActionListener):
 		
 
 		
-		elif Source.label == "Set advanced cell death segmentation parameters":
+		elif Source.label == "Set advanced foci segmentation parameters":
 
 			from JSF_package import configDeathSeg as cfgDS
 		
-			gd2.addMessage("Advanced Cell Death Segmentation Parameters", Font("Sanserif", Font.BOLD, 12))
+			gd2.addMessage("Advanced Foci Segmentation Parameters", Font("Sanserif", Font.BOLD, 12))
 
 			gd2.addNumericField("Pre-processing: multiply pixel values by (useful for dim images):", cfgDS.dcp1Booster, 1)
 			gd2.addNumericField("Low-pass filter upper bound (scaled units, Default and high background processing only):", cfgDS.lowPass, 3)
@@ -312,13 +312,13 @@ class ButtonClic(ActionListener):
 		
 
 			
-		elif Source.label == "Set advanced cell death event counting parameters":
+		elif Source.label == "Set advanced foci event counting parameters":
 
 			from JSF_package import configDeathTrack as cfgDT
-			gd2.addMessage("Advanced Cell Death Event Counting Parameters", Font("Sanserif", Font.BOLD, 12))
-			gd2.addNumericField("Track individual cell death ROIs with area >= (scaled units):", cfgDT.minCasSize, 3)
-			gd2.addNumericField("Cell death event watershed: set gaussian blur radius (scaled units):", cfgDT.dcp1Gauss, 3)
-			gd2.addNumericField("Cell death event centroid tracking: set centroid radius (scaled units):", cfgDT.dcp1Radius, 3)
+			gd2.addMessage("Advanced foci Event Counting Parameters", Font("Sanserif", Font.BOLD, 12))
+			gd2.addNumericField("Track individual foci ROIs with area >= (scaled units):", cfgDT.minCasSize, 3)
+			gd2.addNumericField("Foci event watershed: set gaussian blur radius (scaled units):", cfgDT.dcp1Gauss, 3)
+			gd2.addNumericField("Foci event centroid tracking: set centroid radius (scaled units):", cfgDT.dcp1Radius, 3)
 			
 			gd2.showDialog()
 			
@@ -557,21 +557,23 @@ def Open_GUI():
 		gd.addStringField("Specify single cell segmentation channel (separate multiple channels with commas):", str(cfg.cellCountChannel))
 		gd.setInsets(0,0,0)
 		gd.addCheckbox("Analyze single cells for spatial and fluorescence properties?", cfg.cellCountDeluxe)
+		gd.addToSameRow()
+		gd.addCheckbox("Exlude cells which overlap with foci?", cfg.fociExcluder)
 
 		gd.setInsets(0,0,0)
-		gd.addMessage("Cell Death Segmentation Settings", Font("Sanserif", Font.BOLD, 12))
+		gd.addMessage("Foci Segmentation Settings", Font("Sanserif", Font.BOLD, 12))
 		gd.setInsets(0,0,0)
-		gd.addButton("Set advanced cell death segmentation parameters", ButtonClic())
+		gd.addButton("Set advanced foci segmentation parameters", ButtonClic())
 		items = ["Disabled", "Default", "High Background"]+segChoices
 		gd.setInsets(0,0,0)
-		gd.addChoice("How should cell death events be segmented?", items, cfg.cellDeathSegMethod)
+		gd.addChoice("How should foci events be segmented?", items, cfg.cellDeathSegMethod)
 		gd.addToSameRow()
-		gd.addStringField("Specify cell death segmentation channel (separate multiple channels with commas):", str(cfg.dcp1Channel))
+		gd.addStringField("Specify foci segmentation channel (separate multiple channels with commas):", str(cfg.dcp1Channel))
 		gd.setInsets(0,0,0)
-		gd.addCheckbox("Count number of individual cell death events?", cfg.dcp1Counting)
+		gd.addCheckbox("Count number of individual foci events?", cfg.dcp1Counting)
 		gd.addToSameRow()
-		gd.addCheckbox("Analyze single cells for spatial and fluorescence properties?", cfg.dcp1Deluxe)
-		gd.addButton("Set advanced cell death event counting parameters", ButtonClic())
+		gd.addCheckbox("Analyze single foci for spatial and fluorescence properties?", cfg.dcp1Deluxe)
+		gd.addButton("Set advanced foci event counting parameters", ButtonClic())
 
 		gd.setInsets(0,0,0)
 		gd.addMessage("Fluorescence and Speckles Settings", Font("Sanserif", Font.BOLD, 12))
@@ -656,7 +658,7 @@ def Open_GUI():
 			output = output+"cellDeathSegMethod='"+str(cellDeathSegMethod)+"'\n"
 			if morphoInstalled == 0 and cellDeathSegMethod == "Default":
 				cellDeathSegMethod = "Disabled"
-				IJ.error("To perform the default cell death tracking, please install MorphoLibJ")
+				IJ.error("To perform the default foci tracking, please install MorphoLibJ")
 	
 			if cellDeathSegMethod != "Disabled":
 				dcp1Choice = True
@@ -697,6 +699,9 @@ def Open_GUI():
 			
 			cellCountDeluxe = gd.getNextBoolean()
 			output=output+"cellCountDeluxe="+str(cellCountDeluxe)+"\n"
+			
+			fociExcluder = gd.getNextBoolean()
+			output=output+"fociExcluder="+str(fociExcluder)+"\n"
 
 			dcp1Counting = gd.getNextBoolean()
 			output = output+"dcp1Counting="+str(dcp1Counting)+"\n"
@@ -738,7 +743,7 @@ def Open_GUI():
 				if len (newCheck) > 1:
 					
 					if counting == 1 and cellDeathSegMethod == "Default":
-						error = error + "Cell Death Chanel and"
+						error = error + "Foci Chanel and"
 					elif counting == 3 and (cloneSeg == "Manual Selections" or cloneSeg == "Analyze Entire Image"):
 						error = error + "Clone Channel and"
 					elif counting == 4 and singleCellMethod == "Default":
@@ -933,7 +938,7 @@ def Open_GUI():
 						gdCS.addFileField("Select your custom "+singleCellMethod[11:]+" segmentation file:", os.getcwd())	
 							
 					if "Custom" in cellDeathSegMethod:
-						gdCS.addMessage("Cell Death Segmentation", Font("Sanserif", Font.BOLD, 14))
+						gdCS.addMessage("Foci Segmentation", Font("Sanserif", Font.BOLD, 14))
 						gdCS.addStringField("Add a name for your file!", "New_"+cellDeathSegMethod[11:])
 						gdCS.addFileField("Select your custom "+cellDeathSegMethod[11:]+" segmentation file:", os.getcwd())
 				

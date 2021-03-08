@@ -50,6 +50,9 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 	IJ.run(projection, "Subtract...", "value="+str(subAdd))
 	IJ.run(projection, "Add...", "value="+str(subAdd))
 
+	###To be incorporated as variable
+	#IJ.run(projection, "Multiply...", "value=2.600")
+
 	#Get the right image and calibrations
 	IDs.setSlice(stackno)
 	cloneImp = IDs.crop()
@@ -382,7 +385,7 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 	IJ.setForegroundColor(255, 255, 255)
 	IJ.run("Line Width...", "line=4")
 	IJ.run(cloneImp, "Draw", "")
-	
+	cloneImp.getProcessor().drawString(str("ROI_1"),int(10), int(20), Color.black)
 	
 	#borderMask is a duplicate of that, though is we do fluorescence analysis, we replace it with the fluorescence channel image
 	borderMask = cloneImp.duplicate()	
@@ -392,19 +395,26 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 		IJ.run(borderMask, "RGB Color", "")
 		borderM = pouch.clone()
 		borderMask.setRoi(borderM)
-		IJ.setForegroundColor(255, 255, 255)
+		color = colorArray[0]
+		IJ.setForegroundColor(color[0], color[1], color[2])
+		cloneImp.setColor(Color(color[0], color[1], color[2]))
 		IJ.run("Line Width...", "line=4")
 		IJ.run(borderMask, "Draw", "")
+		cloneImp.getProcessor().drawString(str("ROI_1"),int(10), int(20), Color.black)
 	if halfHalf == True or JSF_package.configRoi.halfHalfNC == True:
 		borderM = excludinator.clone()
 		cloneImp.setRoi(borderM)
-		IJ.setForegroundColor(255, 255, 0)
+		color = colorArray[1]
+		cloneImp.setColor(Color(color[0], color[1], color[2]))
+		IJ.setForegroundColor(color[0], color[1], color[2])
 		IJ.run(cloneImp, "Draw", "")	
+		cloneImp.getProcessor().drawString(str("ROI_2"),int(10), int(40), Color.black)
 
 		if fluoChoice == 1:
 			borderM = excludinator.clone()
-			borderMask.setRoi(borderM)
-			IJ.setForegroundColor(255, 255, 0)
+			cloneImp.setRoi(borderM)
+			cloneImp.setColor(Color(color[0], color[1], color[2]))
+			IJ.setForegroundColor(color[0], color[1], color[2])
 			IJ.run(cloneImp, "Draw", "")	
 			
 	cloneBorderImp = borderMask.duplicate()
@@ -613,22 +623,33 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 
 
 			color = colorArray[genotypeChannel-1]
+
+			
 			#Here we produce our mask images 
+
+			#Select the appropriate color for the genotype
 			IJ.setForegroundColor(color[0], color[1], color[2])
 			cloneMask.setColor(Color(color[0], color[1], color[2]))
+
+			#Draw the clone ROI
 			x = rm.getRoi(peeps)
 			cloneMask.setRoi(x)
 			IJ.run(cloneMask, "Fill", "")
+			xBackup = ShapeRoi(x.clone())
+			
+			
 
-	
+			#Prepare the border/center output image
 			x = rm.getRoi(peeps+1)
 			borderMask.setRoi(x)
 			xRedux = x
-			IJ.setForegroundColor(255, 0, 0)
-			if fluoChoice != 1:
-				IJ.run(borderMask, "Fill", "")
+							
 			IJ.setForegroundColor(color[0], color[1], color[2])
 			borderMask.setColor(Color(color[0], color[1], color[2]))
+			if fluoChoice != 1:
+				IJ.run(borderMask, "Fill", "")
+
+			
 			IJ.run("Line Width...", "line=3")
 			IJ.run(borderMask, "Draw", "")
 			IJ.setForegroundColor(255, 255, 255)
@@ -663,9 +684,30 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 			IJ.run(cloneBorderImp, "Draw", "")
 			borderM = pouch.clone()
 			cloneBorderImp.setRoi(borderM)
+			cloneBorderImp.setColor(Color(255, 255, 255))
 			IJ.run("Line Width...", "line=4")
 			IJ.run(cloneBorderImp, "Draw", "")
 
+			if halfHalf == True or JSF_package.configRoi.halfHalfNC == True:
+				borderM = excludinator.clone()
+				borderMask.setColor(Color(color[0], color[1], color[2]))
+				cloneBorderImp.setColor(Color(color[0], color[1], color[2]))
+				IJ.setForegroundColor(color[0], color[1], color[2])
+				borderMask.setRoi(borderM)
+				IJ.run(borderMask, "Draw", "")	
+				cloneBorderImp.setRoi(borderM)
+				IJ.run(cloneBorderImp, "Draw", "")
+
+			#Draw genotype labels
+			#Label the image with the genotype at the centroid
+			xRois = xBackup.getRois()
+			for x in xRois:
+				xCoordLabel, yCoordLabel = x.getContourCentroid()
+				IJ.setForegroundColor(color[0], color[1], color[2])
+				cloneBorderImp.setColor(Color(color[0], color[1], color[2]))
+				borderMask.setColor(Color(color[0], color[1], color[2]))
+				cloneBorderImp.getProcessor().drawString(str(genotypeNames[genotypeChannel-1]),int(xCoordLabel), int(yCoordLabel), Color.black)
+				borderMask.getProcessor().drawString(str(genotypeNames[genotypeChannel-1]),int(xCoordLabel), int(yCoordLabel), Color.black)
 	
 		if halfHalf == True:
 			sliceROIs.extend([peeps, peeps+1, peeps+2, peeps+3, peeps+4])
@@ -702,12 +744,15 @@ def clone_segmentor (genotypesImpArray, rm, Title, numImages, stackno, pouch, ca
 	corrector = 4*(len(genotypesImpArray)-1)
 	a = rm.getCount()
 	for resultant in genotypesImpArray:
+
 				
 
 		border = a - 2 - corrector
 		corrector = corrector - 4
 		pouchRoi = pouch.clone()
-		if JSF_package.configRoi.halfHalfNC == True and count > 0:
+
+
+		if JSF_package.configRoi.halfHalfNC == True and (count % 2) > 0:
 			pouchRoi = excludinator.clone()
 
 		aROIs = []
@@ -793,7 +838,6 @@ def clone_segmentor (genotypesImpArray, rm, Title, numImages, stackno, pouch, ca
 		#We also keep track of how many ROIs there are before and after this step
 		resultant.setRoi(pouchRoi)
 
-
 		#Create and set up our roiManager
 		manager = RoiManager(True)
 		ParticleAnalyzer.setRoiManager(manager) 
@@ -803,7 +847,9 @@ def clone_segmentor (genotypesImpArray, rm, Title, numImages, stackno, pouch, ca
 		pa.analyze(resultant)
 		manager.runCommand("Deselect")
 		
-	
+
+
+		
 		#We now get all the resulting ROIs from the roi manager as an array
 		bROIs = manager.getSelectedRoisAsArray()
 		for newRoi in bROIs:

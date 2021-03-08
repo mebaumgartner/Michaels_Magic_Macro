@@ -365,14 +365,19 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			centerFluoList[ROIgenotype] = centerFluoList[ROIgenotype] + [Mf]
 			
 			if dcp1Choice == 1:
-				casCasImp.getProcessor().drawString("Clone Center", 10, 120, Color.orange)
+				
 				IJ.setForegroundColor(0,0,0)
+				casCasImp.setColor(Color.black)
 				IJ.run("Line Width...", "line=4")
 				IJ.run(casCasImp, "Draw", "")
+				casCasImp.setColor(Color.orange)
+				casMaskImp.setColor(Color.orange)
 				IJ.setForegroundColor(255, 105, 0)
 				IJ.run("Line Width...", "line=2")
 				IJ.run(casCasImp, "Draw", "")
 				IJ.run(casMaskImp, "Draw", "")
+				casCasImp.getProcessor().drawString("Clone Center", 10, 120, Color.black)
+			
 
 		#Again for the border
 		if roiName.startswith("Border_") == True:
@@ -410,7 +415,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 
 			#Draw yellow border around caspase in clones
 			if dcp1Choice == 1:
-				casCasImp.getProcessor().drawString("Caspase in Clones", 10, 40, Color.yellow)
+				
 
 				IJ.setForegroundColor(0, 0, 0)
 				casCasImp.setColor(Color.black)
@@ -420,26 +425,26 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				casCasImp.setColor(Color.yellow)
 				IJ.run("Line Width...", "line=2")
 				IJ.run(casCasImp, "Draw", "")
+				casCasImp.getProcessor().drawString("Caspase in Clones", 10, 40, Color.black)
 
 		#Caspase area in the clones
 		if "CaspaseCenter" in roiName:
 
 			casCenterList[ROIgenotype] = casCenterList[ROIgenotype] + [Ma]
 			if dcp1Choice == 1:
-				casCasImp.getProcessor().drawString("Center", 10, 60, Color.blue)
-
 				IJ.setForegroundColor(0, 0, 255)
 				casCasImp.setColor(Color.blue)
 				IJ.run(casCasImp, "Fill", "")
+				casCasImp.getProcessor().drawString("Center", 10, 60, Color.black)
 
 		#Caspase in the border
 		if "CaspaseBorder" in roiName:
 
 			casBorderList[ROIgenotype] = casBorderList[ROIgenotype] + [Ma]
 			if dcp1Choice == 1:
-				casCasImp.getProcessor().drawString("Border", 10, 80, Color.red)
 				casCasImp.setColor(Color.red)
 				IJ.run(casCasImp, "Fill", "")
+				casCasImp.getProcessor().drawString("Border", 10, 80, Color.black)
 
 		#Caspase in the non-competing region
 		if "CaspaseNotClones" in roiName and ROIgenotype == 1:
@@ -487,9 +492,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				IJ.setForegroundColor(0,0,0)
 				speckleOverlayImp.setColor(Color.black)
 
-				
-
-			speckleOverlayImp.getProcessor().drawString("Clones", 10, 20, Color.green)
+			
 
 
 		if "SpecklesCenter" in roiName:
@@ -513,9 +516,10 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				speckleMaskImp.setColor(Color.blue)
 				IJ.setForegroundColor(0,0,255)
 				IJ.run(speckleMaskImp, "Fill", "slice")
+				speckleMaskImp.getProcessor().drawString("Clone Center", 10, 40, Color.black)
 				IJ.setForegroundColor(0,0,0)
 				speckleMaskImp.setColor(Color.black)
-				speckleMaskImp.getProcessor().drawString("Clone Center", 10, 40, Color.blue)
+				
 	
 	
 				speckleOverlayImp.setRoi(activeRoi)
@@ -527,8 +531,9 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				IJ.setForegroundColor(0,0,0)
 				speckleOverlayImp.setColor(Color.black)
 
-			IJ.setForegroundColor(0,0,0)
-			speckleOverlayImp.getProcessor().drawString("Clone Center", 10, 40, Color.blue)
+			IJ.setForegroundColor(0,0,255)
+			speckleOverlayImp.setColor(Color.blue)
+			speckleOverlayImp.getProcessor().drawString("Clone Center", 10, 40, Color.black)
 
 		if "SpecklesBorder" in roiName:
 
@@ -550,9 +555,10 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				IJ.setForegroundColor(255,0,0)
 				speckleMaskImp.setColor(Color.red)
 				IJ.run(speckleMaskImp, "Fill", "slice")
+				speckleMaskImp.getProcessor().drawString("Clone Border", 10, 60, Color.black)
 				IJ.setForegroundColor(0,0,0)
 				speckleMaskImp.setColor(Color.black)
-				speckleMaskImp.getProcessor().drawString("Clone Border", 10, 60, Color.red)
+				
 
 				#Draw ROI to overlay image
 
@@ -566,8 +572,9 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				speckleOverlayImp.setColor(Color.black)
 
 			
-			IJ.setForegroundColor(0,0,0)
-			speckleOverlayImp.getProcessor().drawString("Clone Border", 10, 60, Color.red)
+			IJ.setForegroundColor(255,0,0)
+			speckleOverlayImp.setColor(Color.red)
+			speckleOverlayImp.getProcessor().drawString("Clone Border", 10, 60, Color.black)
 		if "SpecklesNotClones" in roiName:
 					
 			#Add speckle fluorescence and area, if prompted by the user
@@ -602,9 +609,11 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				speckleOverlayImp.setColor(Color.black)
 
 				
-			IJ.setForegroundColor(0,0,0)
-			speckleMaskImp.getProcessor().drawString("Not Clones", 10, 80, Color.white)
-			speckleOverlayImp.getProcessor().drawString("Not Clones", 10, 80, Color.white)
+			IJ.setForegroundColor(255, 255, 255)
+			speckleMaskImp.setColor(Color.white)
+			speckleOverlayImp.setColor(Color.white)
+			speckleMaskImp.getProcessor().drawString("Not Clones", 10, 80, Color.black)
+			speckleOverlayImp.getProcessor().drawString("Not Clones", 10, 80, Color.black)
 
 
 			
@@ -615,9 +624,13 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 
 			#Draw the clones in the caspase mask
 			if dcp1Choice == 1:
+				IJ.setForegroundColor(0, 255, 0)
+				casCasImp.setColor(Color.green)
+				casCasImp.getProcessor().drawString("Clones", 10, 20, Color.black)
+				IJ.setForegroundColor(0, 255, 255)
+				casCasImp.setColor(Color.cyan)
+				casCasImp.getProcessor().drawString("Caspase not in clones", 10, 100, Color.black)
 				IJ.setForegroundColor(color[0], color[1], color[2])
-				casCasImp.getProcessor().drawString("Clones", 10, 20, Color.green)
-				casCasImp.getProcessor().drawString("Caspase not in clones", 10, 100, Color.cyan)
 				IJ.run("Line Width...", "line=4")
 				IJ.run(casCasImp, "Draw", "")
 				IJ.run(casMaskImp, "Draw", "")
@@ -850,7 +863,7 @@ def create_whole_disc_table(rtD, LoLa, LoLb, LoLc, timepoint):
 ###########################################################################################################################################################################
 def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray, iHeight, numGenotypes, borderArray, rm, zStart, cloneTrackingArray, names, Title, rt, pouchHeight, casRefArray, cloneImpArray, colorArray, pouchArray, pouch2Array, genotypeNames, pouch, excludinator, iWidth, timepoint, rtDeluxe, deluxeCell, fullCloneROIArray):
 
-	from JSF_package.configBasic import cloneChannel, fluoChannel, fluoChoice, dcp1Choice, cloneTracking
+	from JSF_package.configBasic import cloneChannel, fluoChannel, fluoChoice, dcp1Choice, cloneTracking, fociExcluder
 	from random import randrange
 	from ij import IJ, WindowManager, ImagePlus, ImageStack
 	from ij.measure import ResultsTable, Measurements
@@ -914,7 +927,7 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 		genotypeListCell =["Single Cell Genotype"]
 		cellIDList = ["Single Cell ID"]
 		isBorderList = ["Is in Border"] #True for border cell, false for center cell
-		isDCP1positiveList = ["Is DCP1 positive"] #True for Caspase positive cell, false for non-dying cell
+		isDCP1positiveList = ["Is Foci"] #True for Caspase positive cell, false for non-dying cell
 		cellZLevel = ["Single Cell Z Level"] #This is the middle z-level (as it will be segmented in 3D. If there is a tie, winner is whichever z-level has a greater area.
 		distanceToCentroid = ["Distance from pouch centroid"] #This measures the distance of the single cell from the center of the ROI
 		distanceToPerimeter = ["Distance from clone perimeter"] #This measures the distance of the single cell to the clone perimeter
@@ -986,7 +999,9 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 	outImpSC = 0
 
 	cloneMaskStack = ImageStack(iWidth, iHeight)
-	cellID = 1
+	cellID = 0
+
+	
 	#Here we loop through the tracking array, which is a list of 3 lists. Each list will consist of ROI indices, or it will say 'Skip' if that particular analysis is not being performed
 	for assignments in trackingArray: 
 
@@ -1313,26 +1328,29 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 								casDuplicate = caspaseROI.clone()
 								casChecker.and(casDuplicate)
 			
-								#Here we check to see if there is any overlap. If x, y, width, and height are zero, then there is no ROI
+								#Here we check to see if there is any overlap of cells with foci. If x, y, width, and height are zero, then there is no ROI
 								#Otherwise, there is some level of overlap, and we set U to 1. If U is one, there is border overlap, if U is zero, there is not
-								bobo = str(casChecker)
-								Ctest = 0
-								if bobo.find("x=0") == -1:
-									Ctest = 1
-								if bobo.find("y=0") == -1:
-									Ctest = 1
-								if bobo.find("width=0") == -1:
-									Ctest = 1
-								if bobo.find("height=0") == -1:
-									Ctest = 1
-								if Ctest == 1:
-									casOverlap = casChecker.size()
+
+								if fociExcluder == True:
 								
-									if casOverlap > (casTotArea/2):
-										skipCell = True
-										skipcellcount += 1
-										xEx, yEx = cloneROI.getContourCentroid()
-										outImp.getProcessor().drawString(str("e"+str(skipcellcount)),int(xEx), int(yEx), Color.black)
+									bobo = str(casChecker)
+									Ctest = 0
+									if bobo.find("x=0") == -1:
+										Ctest = 1
+									if bobo.find("y=0") == -1:
+										Ctest = 1
+									if bobo.find("width=0") == -1:
+										Ctest = 1
+									if bobo.find("height=0") == -1:
+										Ctest = 1
+									if Ctest == 1:
+										casOverlap = casChecker.size()
+									
+										if casOverlap > (casTotArea/2):
+											skipCell = True
+											skipcellcount += 1
+											xEx, yEx = cloneROI.getContourCentroid()
+											outImp.getProcessor().drawString(str("e"+str(skipcellcount)),int(xEx), int(yEx), Color.black)
 								
 
 	
@@ -1423,7 +1441,7 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 						
 						#Add values to array 
 						imageNameList = imageNameList + [names + Title]
-						genotypeList = genotypeList + [ROIgenotype]
+						genotypeList = genotypeList + ["<"+str(genotypeNames[ROIgenotype-1])+"_[Genotype:"+str(ROIgenotype)+"]>"]
 						cloneIdList = cloneIdList + [ti]
 						zLevelList = zLevelList + [bName]
 						
@@ -1533,12 +1551,23 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 						outClImp.setColor(Color(rVal, gVal, bVal))
 						outClImp.setColor(Color(rVal, gVal, bVal))
 						IJ.setForegroundColor(rVal, gVal, bVal)
-						outImp.getProcessor().drawString(str(ti),int(xCoord), int(yCoord), Color.black)
+
+						xBackup = cloneROI.clone()
+						xRois = xBackup.getRois()
+						for x in xRois:
+							xCoordC, yCoordC = getContourCentroid(x)
+							cloneLabel = "Clone:" + str(ti)
+							if (JSF_package.configRoi.halfHalfNC ==False) and (numGenotypes>1):
+								cloneLabel = cloneLabel+"\nGenotype:" + str(genotypeNames[activeGenotype-1])
+							
+							outImp.getProcessor().drawString(cloneLabel,int(xCoordC), int(yCoordC), Color.black)
+							outClImp.getProcessor().drawString(cloneLabel,int(xCoordC), int(yCoordC), Color.black)
+						
 						outClImp.setRoi(cloneROI)
 						outClImp.setSlice(int(bName)-int(zStart) + 1)
 						IJ.run("Line Width...", "line=3")
 						IJ.run(outClImp, "Draw", "slice")
-						outClImp.getProcessor().drawString(str(ti),int(xCoord), int(yCoord), Color.black)
+						
 
 
 						if dcp1Choice == 1:
@@ -1654,22 +1683,26 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 						skipper = False
 						if skipCell == False:
 							cellID += 1
+			
 					elif Chold > Uhold :
 						centerCasCount[ROIgenotype] = centerCasCount[ROIgenotype] + 1
 						skipper = False
 						if skipCell == False:
 							cellID += 1
+		
 				if trackCount == 0:
 					if (Uhold >= Chold) and (Uhold > 0):
 						borderCount[ROIgenotype] = borderCount[ROIgenotype] + 1
 						skipper = False
 						if skipCell == False:
 							cellID += 1
+						
 					elif Chold > Uhold :
 						centerCount[ROIgenotype] = centerCount[ROIgenotype] + 1
 						skipper = False
 						if skipCell == False:
 							cellID += 1
+						
 
 				#Add our deluxeCell counts if applicable
 				if ((JSF_package.configBasic.dcp1Deluxe == True and deluxeCell == True and trackCount != 1) or (JSF_package.configBasic.cellCountDeluxe == True and deluxeCell == True and trackCount != 1)) and skipper==False and skipCell==False:
@@ -1812,13 +1845,6 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 		else:
 			cellLoL= ["Title", "TimePoint", cellIDList , genotypeListCell, cellZLevel , isBorderList , isDCP1positiveList , distanceToCentroid, distanceToPerimeter]
 	
-		
-
-		
-
-		for item in cellLoL:
-			print "item= ", item
-
 			
 		measurementCount = 1
 		while measurementCount < len(cellIDList):
@@ -1853,7 +1879,7 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 
 ###########################################
 #This script makes the composite image
-def image_generator(cloneMaskStack, borderMaskArray, casMaskArray, cloneImpArray, fluoImpArray, casImpArray, iHeight, casCasArray, cloneBorderArray, cloneTrackingArray, outImp, outClImp, refBaseArray, refOutArray, refStandArray, iWidth, outImpSC, deluxeCell):
+def image_generator(cloneMaskStack, borderMaskArray, casMaskArray, cloneImpArray, fluoImpArray, casImpArray, iHeight, casCasArray, cloneBorderArray, cloneTrackingArray, outImp, outClImp, refBaseArray, refOutArray, refStandArray, iWidth, outImpSC, deluxeCell, calibration):
 
 	from JSF_package.configBasic import fluoChoice, dcp1Choice, speckle, cloneTracking
 	from JSF_package import _misc_, caspase_analysis, cell_tracking, clone_analysis, configBasic, configCellTrack, configCloneSeg, configDeathSeg, configDeathTrack, configRoi, configSave, seeded_region_growing, speckles_analysis, start_up, tracking_and_outputs, user_inputs_GUI
@@ -1935,6 +1961,7 @@ def image_generator(cloneMaskStack, borderMaskArray, casMaskArray, cloneImpArray
 		cloneOutStack = StackCombiner().combineVertically(cloneOutStack, speckleOutStack)
 
 	imp = ImagePlus("Display Panel", cloneOutStack)
+	imp.setCalibration(calibration)
 
 	return imp
 

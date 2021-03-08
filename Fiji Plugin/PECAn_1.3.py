@@ -836,7 +836,6 @@ def run_script():
 
 									IJ.log("Single-cell segmentation completed successfully")
 
-								print "start"
 								#Run the dcp1 analysis if prompted by user, and store the images
 								if JSF_package.configBasic.dcp1Choice == 1:
 
@@ -867,7 +866,7 @@ def run_script():
 
 									IJ.log("Speckle analysis completed successfully")
 
-								print "end"
+								
 								#Quit the script if the user has pressed escape at any point in the loop
 								if IJ.escapePressed() == 1:
 									IJ.log("Process aborted by user")
@@ -968,7 +967,7 @@ def run_script():
 							#flush big variables 
 							LoLa = LoLb = LoLc = sliceROIs = None
 
-							print 10
+					
 							
 							IJ.log("Whole disc results table generation completed successfully")
 							rtS.show("Summary Table")
@@ -987,7 +986,7 @@ def run_script():
 							IJ.log("Composite output image generation initiated")
 							#imp is just the imagePlus of our display panel
 							if generateImage == True:
-								imp = JSF_package.tracking_and_outputs.image_generator(cloneMaskStack, borderMaskArray, casMaskArray, cloneImpArray, fluoImpArray, casImpArray, iHeight, casCasArray, cloneBorderArray, cloneTrackingArray, outImp, outClImp, refBaseArray, refOutArray, refStandArray, iWidth, outImpSC, deluxeCell)
+								imp = JSF_package.tracking_and_outputs.image_generator(cloneMaskStack, borderMaskArray, casMaskArray, cloneImpArray, fluoImpArray, casImpArray, iHeight, casCasArray, cloneBorderArray, cloneTrackingArray, outImp, outClImp, refBaseArray, refOutArray, refStandArray, iWidth, outImpSC, deluxeCell, calibration)
 								
 							
 								if JSF_package.configBasic.timelapse == True:

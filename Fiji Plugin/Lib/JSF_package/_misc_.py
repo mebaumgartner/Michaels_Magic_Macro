@@ -13,12 +13,11 @@ def mask_confirmer(a, b):
 	from ij import IJ
 	from ij.measure import ResultsTable
 
-	print 1
+
 	#Create an ROI in a blank region of the image (created by resizing the canvas)
 	IJ.run("Clear Results")
 	b.setRoi(1, a, 1, 1)
 
-	print 2
 	#Measure the area and get the maximum pixel value
 	IJ.run(b, "Measure", "")
 	IJ.run(b, "Select None", "")
@@ -26,11 +25,11 @@ def mask_confirmer(a, b):
 	peepers = rt.getStringValue("Max",0)
 	IJ.run("Clear Results")
 
-	print 3
+
 	#Since this is a binary image with known parameters, if the Max value is 255, the image needs to be inverted
 	if float(peepers)==255:
 		IJ.run(b, "Invert", "")
-	print 4
+
 	
 ###############
 #This function determines if an ROI is empty or not. If it is, we replace it with a little placeholder ROI
@@ -93,6 +92,8 @@ def channel_open(file_path, s, c):
 	options.setSeriesOn(s,True)
 	imps = BF.openImagePlus(options)
 	for imp in imps:
+
+	
 		return imp
 
 ###########

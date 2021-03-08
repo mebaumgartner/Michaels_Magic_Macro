@@ -77,3 +77,4 @@ morphoSeg=18.0
 filterWeight=2.1
 cellPost='Despeckle'
 blurCell=0.0
+fociExcluder=True
