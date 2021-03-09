@@ -49,12 +49,12 @@ shinyUI(
         #############################################################################################################################################################
         #############################################################################################################################################################
             
-        ui <- navbarPage("Wing Disc Analysis", 
+        ui <- navbarPage("Whole Sample Analysis", 
                          theme = shinytheme("united"),
                          
                          
                          
-                 #Design for wing disc analysis panel
+                 #Design for whole sample analysis panel
                  
                  ############################################################################################################################    
                  
@@ -136,15 +136,15 @@ shinyUI(
                                            tableOutput("fligner")
                                            ),
                                   #This panel puts out the approximate cell counts made from approximating each cell as a cylinder of diameter 10 microns
-                                  tabPanel("Overall Fisher Tests", h4("Number of apoptotic and non-apoptotic cells in clone border vs clone center across all samples"), tableOutput("deathTable"),
-                                           h4("Fisher test on number of apoptotic and non-apoptotic cells in clone border vs. clone center"), tableOutput("fishBC"),
-                                           h4("Fisher test on number of apoptotic and non-apoptotic cells in clone border between experimental groups"), tableOutput("fishTable")
+                                  tabPanel("Overall Fisher Tests", h4("Number of Foci+ and Foci- cells in clone border vs clone center across all samples"), tableOutput("deathTable"),
+                                           h4("Fisher test on number of Foci+ and Foci- cells in clone border vs. clone center"), tableOutput("fishBC"),
+                                           h4("Fisher test on number of Foci+ and Foci- cells in clone border between experimental groups"), tableOutput("fishTable")
                                   ),
                                   tabPanel("Sample-by-Sample Fisher Tests", 
-                                           mainPanel(h4("Counts of competing vs. non-competing wing discs as determined by Fisher Test of apoptotic and non-apoptotic cells in clone border vs. clone center per individual wing disc"),
+                                           mainPanel(h4("Counts of samples with border vs. center foci enrichment as determined by Fisher Test of Foci and Foci- cells in clone border vs. clone center per individual sample"),
                                                      textOutput("fishyPrint"),
                                                      tableOutput("fishyCounty"),
-                                                     h4("Fisher test on individual wing disc cell counts: "),
+                                                     h4("Fisher test on individual sample foci/cell counts: "),
                                                      tableOutput("siggy"))),
                                   tabPanel("Customize and Export Plot",
                                            fluidRow(column(2,  

@@ -1,7 +1,7 @@
 #
 #
 #
-# These are miscellaneous functions that are used in Michael's Magic Macro
+# These are miscellaneous functions that are used in the PECAn software
 #
 #
 #
@@ -30,7 +30,7 @@ def mask_confirmer(a, b):
 	if float(peepers)==255:
 		IJ.run(b, "Invert", "")
 
-	
+
 ###############
 #This function determines if an ROI is empty or not. If it is, we replace it with a little placeholder ROI
 def selection_confirmer(ROI, iHeight, imp):
@@ -46,19 +46,19 @@ def selection_confirmer(ROI, iHeight, imp):
 		emptyRoi = "<empty>"
 
 		return ROI, emptyRoi
-		
+
 
 	if ROI:
 
 		emptyRoi = ""
 		ROI = ShapeRoi(ROI)
-	
-		#Determinining if an ROI is empty is actually tricky. How I do it is by getting the string (which has the general details), and finding 
+
+		#Determinining if an ROI is empty is actually tricky. How I do it is by getting the string (which has the general details), and finding
 		#What it's width is. If the width of the ROI is zero, it is empty for our purposes
 		x = str(ROI).find("width")
 		x = str(ROI)[x+6:x+7]
 		if x == "0":
-	
+
 			#If the ROI is empty, we replace it with a placeholder ROI and return an "<empty>" string that we can use to later identify it
 			imp.setRoi(5,iHeight+20,1,1)
 			ROI = imp.getRoi()
@@ -73,7 +73,7 @@ def selection_confirmer(ROI, iHeight, imp):
 			ROI = ShapeRoi(ROI)
 			emptyRoi = "<empty>"
 	return ROI, emptyRoi
-		
+
 ############
 #This function opens just  the channel of the series we want and keeps it as a stack.
 def channel_open(file_path, s, c):
@@ -81,19 +81,19 @@ def channel_open(file_path, s, c):
 	from loci.plugins import BF
 	from loci.plugins.in import ImporterOptions
 	from ij import IJ
-	
+
 	s = s-1
 	c = c-1
 	options = ImporterOptions()
 	options.setId(file_path)
 	options.setColorMode(ImporterOptions.COLOR_MODE_GRAYSCALE)
 	options.setCBegin(s, c)
-	options.setCEnd(s,c)  
+	options.setCEnd(s,c)
 	options.setSeriesOn(s,True)
 	imps = BF.openImagePlus(options)
 	for imp in imps:
 
-	
+
 		return imp
 
 ###########
@@ -110,12 +110,12 @@ def channel_organize_and_open(indices, inPath, timeFinish, timepoint ):
 	from JSF_package.configDeathSeg import seedChoiceCas, seedChannelCas
 	from JSF_package.configRoi import seedChannel, seedChoice
 	from ij import ImageStack, ImagePlus, IJ
-	
+
 	primaryChannels = []
 	secondaryChannels = []
-	
 
-	
+
+
 	#Load the clone channel
 	primaryChannels = primaryChannels + [cloneChannel]
 	if seedChoiceClones == True and seedChannelClones != "ROI Mask":
@@ -155,6 +155,8 @@ def channel_organize_and_open(indices, inPath, timeFinish, timepoint ):
 
 	colorsOfChannels = []
 	channelsToOpen = []
+
+	#We loop through all the primary channels. If the user specified what color they should be in the output, we decode that here
 	for item in primaryChannels:
 		item.replace(" ", "")
 		item.strip(",")
@@ -200,24 +202,20 @@ def channel_organize_and_open(indices, inPath, timeFinish, timepoint ):
 			a = x[new]
 			x[new] = re.sub('[^0-9]','', a)
 			new += 1
-				
-			
-		
+
+
 		x = [ int(y) for y in x ]
-			
+
 		channelsToOpen = channelsToOpen + x
 		colorsOfChannels = colorsOfChannels +[colorIdex]
-	
 
-	
-	
-	
+
 	channelsToOpen = channelsToOpen + secondaryChannels
 	channelsToOpen = sorted(list(set(channelsToOpen)))
 	channelRange = range(1, channelsToOpen[-1]+1)
 
 	try:
-	
+
 		count = 1
 		pullArray = []
 		for item in channelRange:
@@ -225,13 +223,12 @@ def channel_organize_and_open(indices, inPath, timeFinish, timepoint ):
 				IDs = channel_open(inPath, int(indices), item)
 
 				#If not 8-bit, coerce to 8-bit
-				
 				impType = IDs.getBitDepth()
 				if impType != 8:
 					IJ.run(IDs, "8-bit", "")
 					IJ.log("Image "+str(IDs.getTitle())+" coerced into 8-bit image")
 
-					
+
 				Title = IDs.getTitle()
 				calibration = IDs.getCalibration()
 				if timepoint == 1:
@@ -252,7 +249,7 @@ def channel_organize_and_open(indices, inPath, timeFinish, timepoint ):
 
 	except:
 		pullArray = "Error"
-	
+
 	return pullArray, timeFinish, colorsOfChannels
 
 ############################################################
@@ -263,11 +260,11 @@ def decode_channels(idSearch, pullArray, colorsOfChannels, multipleC):
 	from ij import IJ
 	import re
 
-	
-	
+
+
 	#This is the list of characters the user can input to specify channel colors
 	acceptableStrings = ['r', 'R', 'g', 'G', 'b','B', 'c', 'C', 'm', 'M', 'y', 'Y']
-	
+
 	#If there are multiple channels, we need to pull the colorSet variable from the colorsOfChannels array
 	if multipleC == 1:
 		colorSet = colorsOfChannels[0]
@@ -276,11 +273,11 @@ def decode_channels(idSearch, pullArray, colorsOfChannels, multipleC):
 	if type(idSearch) != int:
 
 
-		res1 = " ".join(re.split("[^a-zA-Z]*", idSearch)) 
+		res1 = " ".join(re.split("[^a-zA-Z]*", idSearch))
 
 		#Get rid of white spaces and split at commas
 		idSearch.replace(" ", "")
-		idSearch.strip(",") 
+		idSearch.strip(",")
 		idSearch = idSearch.split(",")
 
 		count = 0
@@ -293,8 +290,8 @@ def decode_channels(idSearch, pullArray, colorsOfChannels, multipleC):
 
 	#Initialize a variable to track which images we are going to assign to each channel
 	impsToPull = []
-	
-	
+
+
 	for item in pullArray:
 
 		if int(item[0]) in idSearch:
@@ -317,15 +314,15 @@ def decode_channels(idSearch, pullArray, colorsOfChannels, multipleC):
 		rgbCount = 0
 		while rgbCount < len(res1):
 			check = res1[rgbCount]
-			
+
 #			if check in acceptableStrings:
 #				rgbSwitch = True
-				
+
 			rgbCount+=1
-			
+
 		if rgbSwitch == True:
 			IJ.run(baseImp, "RGB Color", "slices")
-		
+
 	baseImp.setTitle(Title)
 
 
@@ -337,72 +334,75 @@ def decode_channels(idSearch, pullArray, colorsOfChannels, multipleC):
 # Run weka segmentation in 3d mode
 def weka3D(IDs, method, genotypeNames):
 
-
+	#Here, we make sure the correct type of classifier has been specified
+	#If not, we exit the analysis
 	if method.endswith(".model") == False:
 		return 0, genotypeNames
 	if method.find("_3D_.") == -1:
 		return 0, genotypeNames
 
-	
-
+	#Import the weka segmenter
 	from trainableSegmentation import WekaSegmentation
 	import os
-	
-	segmentator = WekaSegmentation( True  )
+	segmentator = WekaSegmentation( True )
+
+	#Pull the user-created classifier from the JSF_package
 	classifierPath = os.path.join(os.getcwd(), "jars", "Lib", "JSF_package", "Weka_Models", method )
 	segmentator.loadClassifier(classifierPath)
+
+	#IDs is the raw image, segmentedIDs is the mask created by WEKA
 	segmentedIDs = segmentator.applyClassifier(IDs, 0, False)
 
+	#Get the class names from the WEKA classifier for use as our genotype names
 	genotypeNames = segmentator.getClassLabels()
 
 	#Calibrate the image
 	segmentedIDs.setCalibration(IDs.getCalibration())
-	
+
 	return segmentedIDs, genotypeNames
 
 ##################################################
+# This is used to find the minimum distance between a given point and all points on the perimeter of an ROI
 def find_minimum_distance(roi, x, y):
 
 	from ij.gui import ShapeRoi
 	from math import sqrt
-	
 
-	
+	roi = ShapeRoi(roi) #roi is whatever roi we want to get the minimum distance from. We coerce it into a shape roi, which is a format that has useful properties
 
-	roi = ShapeRoi(roi)
+	#Initialize starter values. Any distance between the roi and the designated point which is less than 'minimum' will become the new minimum.
+	#The coordinates will then be stored in xmin and ymin
 	minimum = 999999999999999999999999999999999999999999999999
 	xmin = 0
 	ymin=0
+
+	#A shape roi is a composite of many other rois. We want to measure the distance against all rois for all the sub-shapes
 	rA = roi.getRois()
-	
+
+	#We loop through each of the sub-rois, interpolate them into a polygon, and then extract one-by-one each pixel on the outline.
+	#We then measure the distance from each such point
 	for roi in rA:
 		count = 0
 		poly = roi.getInterpolatedPolygon(2, True)
 
 		dx = x-xmin
 		dy = y-ymin
-		
-		
-	
-		
+
+		#get each pixel from the polygon
 		while count < poly.npoints:
 			dx = x-poly.xpoints[count]
 			dy = y-poly.ypoints[count]
+
+			#measure the distance using the pythagorean theorem
 			distance = sqrt((dx*dx)+(dy*dy))
+
+			#If we have a new minimum distance, overwrite the previous minimum
 			if distance < minimum:
 				minimum = distance
 				xmin = poly.xpoints[count]
 				ymin = poly.ypoints[count]
-	
+
 			count += 1
-	
-		
 
-
-	
+	#return the coordinates of the nearest point on the ROI perimeter
 	return xmin, ymin
-
-
-
-
-	

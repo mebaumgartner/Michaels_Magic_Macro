@@ -497,6 +497,10 @@ server <- function(input, output) {
         )
         
         wwda2<- as.data.frame(wwda2)
+        
+
+        
+        
         #Output data into analyzed data tab
         output$contents <- renderTable(wwda2,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
         values$rawChoices <- colnames(wwda2)
@@ -508,14 +512,8 @@ server <- function(input, output) {
         values$wwda2 <- wwda2
         
         
-        
-        
-        
         #Output table
         output$contents <- renderTable(wwda2,  hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l", width="auto")
-        
-        
-        
         TrueCasCounts <- 0
         TrueNonCasCounts <- 0
         genotypeNames <- c()
@@ -536,7 +534,7 @@ server <- function(input, output) {
         
         
         tryCatch(
-          #Restore caspase counts
+          #Restore Foci counts
           {
             
             #If we have the actual counts from the macro, we prefer to use those. Otherwise, we revert to the mathematical approximation
@@ -566,9 +564,9 @@ server <- function(input, output) {
                 
                 
                 
-                borderCells <- aggregate(genotypeVals$NonFoci.Cells.in.Border, list(genotypeVals$ConditionAndExperiment), sum)
+                borderCells <- aggregate(genotypeVals$Number.of.Border.Cells, list(genotypeVals$ConditionAndExperiment), sum)
                 
-                centerCells <- aggregate(genotypeVals$NonFoci.Cells.in.Center, list(genotypeVals$ConditionAndExperiment), sum)
+                centerCells <- aggregate(genotypeVals$Number.of.Center.Cells, list(genotypeVals$ConditionAndExperiment), sum)
                 
                 borderCasCells <- aggregate(genotypeVals$Border.Foci.Count, list(genotypeVals$ConditionAndExperiment), sum)
                 
@@ -578,10 +576,10 @@ server <- function(input, output) {
                 #Format these values into a table suitable for a fisher test
                 deathTable <- data.frame(
                   Genotype = borderCells[,1],
-                  NotCasCellsInBorder = borderCells[,2],
-                  CasCellsInBorder = borderCasCells[,2],
-                  NotCasCellsInCenter = centerCells[,2],
-                  CasCellsInCenter = centerCasCells[,2]
+                  CellsInBorder = borderCells[,2],
+                  FociInBorder = borderCasCells[,2],
+                  CellsInCenter = centerCells[,2],
+                  FociInCenter = centerCasCells[,2]
                 )
                 
                 values$deathTable <- deathTable
@@ -643,8 +641,6 @@ server <- function(input, output) {
     }
     )
     
-    
-    
   })  
   
   
@@ -672,17 +668,21 @@ server <- function(input, output) {
         
         
         #Only allow analysis to proceed if the correct filetype has been loaded and genotype assignments have been made
-        print (1)
+    
         validate(
           need(cta$Clone.ID, "Please load a clone tracking analysis file and assign genotypes"),
           need(okayGo == TRUE, "Please load a clone tracking analysis file and assign genotypes"),
           need(values$loaded == 1, "Load genotype assignments first!"),
           need(values$randoTable == FALSE, "Please load a previously analyzed data table")
         )
-        print (2)
+        
         
         #Read genotype assignment csv file
         trad  <- values$genAssign
+        
+        #This step is for backwards compatibility with old input files. We update some outdated column names to reflect their new names
+        names(cta) <- gsub(x = names(cta), pattern = "Pouch", replacement = "ROI")  
+        names(cta) <- gsub(x = names(cta), pattern = "Caspase", replacement = "Foci")  
         
         #Merge the CSV file input with the genotype assignments
         colnames(trad) <- c("Image.Name", "Experiment", "Condition")
@@ -742,20 +742,20 @@ server <- function(input, output) {
           return(NA)
         })
         
-        #Add in the caspase data, if applicable
+        #Add in the Foci data, if applicable
         tryCatch(
           {
-            if("Caspase.Coverage" %in% colnames(ccta2))
+            if("Foci.Coverage" %in% colnames(ccta2))
             {
-              ccta3 <- cbind(ccta3, Caspase.Coverage = tapply(ccta2$Caspase.Coverage , ccta2$CloneZName , sum))
-              ccta3 <- cbind(ccta3, Caspase.Border = tapply(ccta2$Caspase.Border , ccta2$CloneZName , sum))
-              ccta3 <- cbind(ccta3, Caspase.Center = tapply(ccta2$Caspase.Center , ccta2$CloneZName , sum))
+              ccta3 <- cbind(ccta3, Foci.Coverage = tapply(ccta2$Foci.Coverage , ccta2$CloneZName , sum))
+              ccta3 <- cbind(ccta3, Foci.Border = tapply(ccta2$Foci.Border , ccta2$CloneZName , sum))
+              ccta3 <- cbind(ccta3, Foci.Center = tapply(ccta2$Foci.Center , ccta2$CloneZName , sum))
             }
             
           },
           # ... but if an error occurs, tell me what happened: 
           error=function(error_message) {
-            message("no caspase")
+            message("no Foci")
             return(NA)
           }
         )
@@ -766,7 +766,7 @@ server <- function(input, output) {
         tryCatch(
           # This is what I want to do...
           {
-            ccta3 <- cbind(ccta3, Disc.Height = tapply(ccta2$Pouch.Height , ccta2$CloneZName , unique))
+            ccta3 <- cbind(ccta3, Disc.Height = tapply(ccta2$ROIHeight , ccta2$CloneZName , unique))
           },
           # ... but if an error occurs, tell me what happened:
           error=function(error_message) {
@@ -818,7 +818,7 @@ server <- function(input, output) {
         tryCatch(
           # accounts for a change in format between older macro and newer macro
           {
-            ccta3sumZ2 <- cbind(ccta3sum, ROI.Volume = tapply(ccta3$Pouch.Area, ccta3$CloneName, unique) * tapply(ccta3$Disc.Height, ccta3$CloneName, unique))
+            ccta3sumZ2 <- cbind(ccta3sum, ROI.Volume = tapply(ccta3$ROI.Area, ccta3$CloneName, unique) * tapply(ccta3$Disc.Height, ccta3$CloneName, unique))
           },
           # ... but if an error occurs, tell me what happened:
           error=function(error_message) {
@@ -840,25 +840,25 @@ server <- function(input, output) {
           }
         )
         tryCatch(
-          #Add caspase data if applicable
+          #Add Foci data if applicable
           {
-            if("Caspase.Coverage" %in% colnames(ccta3))
+            if("Foci.Coverage" %in% colnames(ccta3))
             {
-              ccta3sumZ2 <- cbind(ccta3sumZ2, Foci.Volume = tapply(ccta3$Caspase.Coverage , ccta3$CloneName , sum))
-              ccta3sumZ2 <- cbind(ccta3sumZ2, Foci.in.Border.Volume = tapply(ccta3$Caspase.Border , ccta3$CloneName , sum))
-              ccta3sumZ2 <- cbind(ccta3sumZ2, Foci.in.Center.Volume = tapply(ccta3$Caspase.Center , ccta3$CloneName , sum))
-              ccta3sumZ2 <- cbind(ccta3sumZ2, Percent.Foci.Coverage.of.Clone = tapply(ccta3$Caspase.Coverage , ccta3$CloneName , sum) *100/ tapply(ccta3$Clone.Area , ccta3$CloneName , sum))
-              ccta3sumZ2 <- cbind(ccta3sumZ2, Percent.Foci.Coverage.of.Border = tapply(ccta3$Caspase.Border , ccta3$CloneName , sum) *100/ tapply(ccta3$Border.Area , ccta3$CloneName , sum))
-              ccta3sumZ2 <- cbind(ccta3sumZ2, Percent.Foci.Coverage.of.Center = tapply(ccta3$Caspase.Center , ccta3$CloneName , sum) *100/ tapply(ccta3$Center.Area , ccta3$CloneName , sum))
-              # ccta3sumZ2 <- cbind(ccta3sumZ2, Competitive.index = c( tapply(ccta3$Caspase.Center , ccta3$CloneName , sum) / tapply(ccta3$Center.Area , ccta3$CloneName , sum) )
+              ccta3sumZ2 <- cbind(ccta3sumZ2, Foci.Volume = tapply(ccta3$Foci.Coverage , ccta3$CloneName , sum))
+              ccta3sumZ2 <- cbind(ccta3sumZ2, Foci.in.Border.Volume = tapply(ccta3$Foci.Border , ccta3$CloneName , sum))
+              ccta3sumZ2 <- cbind(ccta3sumZ2, Foci.in.Center.Volume = tapply(ccta3$Foci.Center , ccta3$CloneName , sum))
+              ccta3sumZ2 <- cbind(ccta3sumZ2, Percent.Foci.Coverage.of.Clone = tapply(ccta3$Foci.Coverage , ccta3$CloneName , sum) *100/ tapply(ccta3$Clone.Area , ccta3$CloneName , sum))
+              ccta3sumZ2 <- cbind(ccta3sumZ2, Percent.Foci.Coverage.of.Border = tapply(ccta3$Foci.Border , ccta3$CloneName , sum) *100/ tapply(ccta3$Border.Area , ccta3$CloneName , sum))
+              ccta3sumZ2 <- cbind(ccta3sumZ2, Percent.Foci.Coverage.of.Center = tapply(ccta3$Foci.Center , ccta3$CloneName , sum) *100/ tapply(ccta3$Center.Area , ccta3$CloneName , sum))
+              # ccta3sumZ2 <- cbind(ccta3sumZ2, Competitive.index = c( tapply(ccta3$Foci.Center , ccta3$CloneName , sum) / tapply(ccta3$Center.Area , ccta3$CloneName , sum) )
               #                     /
-              #                         c( tapply(ccta3$Caspase.Border , ccta3$CloneName , sum) / tapply(ccta3$Border.Area , ccta3$CloneName , sum) ))
+              #                         c( tapply(ccta3$Foci.Border , ccta3$CloneName , sum) / tapply(ccta3$Border.Area , ccta3$CloneName , sum) ))
               # ccta3sumZ2 <- cbind(ccta3sumZ2, log2.Competitive.index = log(ccta3sumZ2$Competitive.index, 2))
             }
           },
           # ... but if an error occurs, tell me what happened: 
           error=function(error_message) {
-            message("no caspase")
+            message("no Foci")
             return(NA)
           }
         )
@@ -949,7 +949,7 @@ server <- function(input, output) {
     #This trycatch loop encloses the entire wing disc analysis function
     tryCatch(
       {
-        
+
         
         #Read genotype assignment csv file to the variable 'trad'
         trad  <- values$genAssign
@@ -964,12 +964,21 @@ server <- function(input, output) {
         }
         
         
-        
+        #This is for backwards compatibility, updating out-modded names to current ones
+        #Remove from the production version
+
+        names(wda) <- gsub(x = names(wda), pattern = "Border Caspase", replacement = "Border Foci Area")  
+        names(wda) <- gsub(x = names(wda), pattern = "Center Caspase", replacement = "Center Foci Area") 
+        names(wda) <- gsub(x = names(wda), pattern = "Clone Caspase", replacement = "Clone Foci Area") 
+        names(wda) <- gsub(x = names(wda), pattern = "Total Caspase Cells", replacement = "Total number of Foci") 
+        names(wda) <- gsub(x = names(wda), pattern = "Pouch", replacement = "ROI")  
+        names(wda) <- gsub(x = names(wda), pattern = "Caspase", replacement = "Foci")  
+       
         
         #Check what type of dataframe has been uploaded
         okayGo <- FALSE
         for (i in colnames(wda)){
-          if(grepl("Pouch Area<", i, fixed = TRUE)) {okayGo <- TRUE}
+          if(grepl("ROI Area<", i, fixed = TRUE)) {okayGo <- TRUE}
         }
         
         
@@ -984,6 +993,7 @@ server <- function(input, output) {
         values$analysisType <- "wingDisc"
         
         
+
         
         colnames(trad) <- c("File", "Image Name", "Experiment", "Condition")
         #We tack the assignments onto the input data, creating a dataframe 'wwda2' with our raw data and assignments
@@ -1063,7 +1073,7 @@ server <- function(input, output) {
         staticVals <- wwdaFull[ , !grepl( "Genotype" , names( wwdaFull) ) ]
         
         
-        Pouch.Area <- wwdaFull[, grepl("Pouch.Area", names(wwdaFull))]
+        ROI.Area <- wwdaFull[, grepl("ROI.Area", names(wwdaFull))]
         
         
         
@@ -1089,10 +1099,10 @@ server <- function(input, output) {
           
           
           colnames(genotypeVals) <- headers
-          tester <- "Pouch.Area" %in% names(genotypeVals)
+          tester <- "ROI.Area" %in% names(genotypeVals)
           
           if (tester == FALSE ){
-            genotypeVals$Pouch.Area <- Pouch.Area
+            genotypeVals$ROI.Area <- ROI.Area
             
           }
           
@@ -1101,8 +1111,7 @@ server <- function(input, output) {
           
           
           
-          
-          
+    
           
           #Here we make our dataframe 'wwda2,' which has all of our data from all our z-levels collated per wing disc
           wwda2 <- data.frame(
@@ -1117,14 +1126,14 @@ server <- function(input, output) {
             Clone.Volume = tapply(wwda$Clone.Area , wwda$Image.Name , sum),
             Clone.Center.Volume = tapply(wwda$Center.Area , wwda$Image.Name , sum),
             Clone.Border.Volume = tapply(wwda$Border.Area , wwda$Image.Name , sum),
-            ROI.Volume = tapply(wwda$Pouch.Area , wwda$Image.Name , sum),
-            Not.Clone.Volume = tapply(wwda$Pouch.Area , wwda$Image.Name, sum) - tapply(wwda$Clone.Area , wwda$Image.Name, sum),
+            ROI.Volume = tapply(wwda$ROI.Area , wwda$Image.Name , sum),
+            Not.Clone.Volume = tapply(wwda$ROI.Area , wwda$Image.Name, sum) - tapply(wwda$Clone.Area , wwda$Image.Name, sum),
             
             
             
             
             Number.of.Z.Slices = tapply(wwda$Z.level, list(wwda$Image.Name), max) - tapply(wwda$Z.level, list(wwda$Image.Name), min) + 1,
-            Percent.Clone.Coverage.of.ROI = tapply(wwda$Clone.Area , wwda$Image.Name , sum)*100 / tapply(wwda$Pouch.Area , wwda$Image.Name , sum),
+            Percent.Clone.Coverage.of.ROI = tapply(wwda$Clone.Area , wwda$Image.Name , sum)*100 / tapply(wwda$ROI.Area , wwda$Image.Name , sum),
             Border.Coverage.of.Clones = tapply(wwda$Border.Area , wwda$Image.Name , sum)*100/tapply(wwda$Clone.Area , wwda$Image.Name , sum)
             
             
@@ -1192,41 +1201,42 @@ server <- function(input, output) {
           TrueCasCounts <- 0
           #This variable tracks whether or not we were able to do individual cell counts or not
           TrueNonCasCounts <- 0    
-          # #Add the caspase information to the table, if applicable
+          # #Add the Foci information to the table, if applicable
           
-          if("Caspase.Area" %in% colnames(wwda))
+          
+          if("Foci.Area" %in% colnames(wwda))
           {
-            wwda2 <- cbind(wwda2, Total.Foci.Volume = tapply(wwda$Caspase.Area , wwda$Image.Name , sum))
-            wwda2 <- cbind(wwda2, Clone.Foci.Volume = tapply(wwda$Clone.Caspase , wwda$Image.Name , sum))
-            wwda2 <- cbind(wwda2, Center.Foci.Volume = tapply(wwda$Center.Caspase , wwda$Image.Name , sum))
-            wwda2 <- cbind(wwda2, Border.Foci.Volume = tapply(wwda$Border.Caspase, wwda$Image.Name , sum))
-            wwda2 <- cbind(wwda2, Not.Clones.Foci.Volume = tapply(wwda$Not.Clones.Caspase.Area, wwda$Image.Name , sum))
+            wwda2 <- cbind(wwda2, Total.Foci.Volume = tapply(wwda$Foci.Area , wwda$Image.Name , sum))
+            wwda2 <- cbind(wwda2, Clone.Foci.Volume = tapply(wwda$Clone.Foci.Area , wwda$Image.Name , sum))
+            wwda2 <- cbind(wwda2, Center.Foci.Volume = tapply(wwda$Center.Foci.Area , wwda$Image.Name , sum))
+            wwda2 <- cbind(wwda2, Border.Foci.Volume = tapply(wwda$Border.Foci.Area, wwda$Image.Name , sum))
+            wwda2 <- cbind(wwda2, Not.Clones.Foci.Volume = tapply(wwda$Not.Clones.Foci.Area, wwda$Image.Name , sum))
             
-            wwda2 <- cbind(wwda2, Percent.Foci.Coverage.of.ROI = tapply(wwda$Caspase.Area , wwda$Image.Name , sum) *100/ tapply(wwda$Pouch.Area , wwda$Image.Name , sum))
-            wwda2 <- cbind(wwda2, Percent.Foci.Coverage.of.Clones = tapply(wwda$Clone.Caspase , wwda$Image.Name , sum) *100/ tapply(wwda$Clone.Area , wwda$Image.Name , sum))
-            wwda2 <- cbind(wwda2, Percent.Foci.Coverage.of.Border = tapply(wwda$Border.Caspase, wwda$Image.Name , sum) *100/ tapply(wwda$Border.Area , wwda$Image.Name , sum))
-            wwda2 <- cbind(wwda2, Percent.Foci.Coverage.of.Center = tapply(wwda$Center.Caspase, wwda$Image.Name , sum) *100/ tapply(wwda$Center.Area , wwda$Image.Name , sum))
-            wwda2 <- cbind(wwda2, Percent.Foci.Coverage.of.Not.Clones = tapply(wwda$Not.Clones.Caspase.Area, wwda$Image.Name , sum) *100/ tapply(wwda$Not.Clones.Area , wwda$Image.Name , sum))
-            # wwda2 <- cbind(wwda2, Competitive.Index = c( c( tapply(wwda$Center.Caspase , wwda$Image.Name , sum) / tapply(wwda$Center.Area , wwda$Image.Name , sum) )
+            wwda2 <- cbind(wwda2, Percent.Foci.Coverage.of.ROI = tapply(wwda$Foci.Area , wwda$Image.Name , sum) *100/ tapply(wwda$ROI.Area , wwda$Image.Name , sum))
+            wwda2 <- cbind(wwda2, Percent.Foci.Coverage.of.Clones = tapply(wwda$Clone.Foci.Area , wwda$Image.Name , sum) *100/ tapply(wwda$Clone.Area , wwda$Image.Name , sum))
+            wwda2 <- cbind(wwda2, Percent.Foci.Coverage.of.Border = tapply(wwda$Border.Foci.Area, wwda$Image.Name , sum) *100/ tapply(wwda$Border.Area , wwda$Image.Name , sum))
+            wwda2 <- cbind(wwda2, Percent.Foci.Coverage.of.Center = tapply(wwda$Center.Foci.Area, wwda$Image.Name , sum) *100/ tapply(wwda$Center.Area , wwda$Image.Name , sum))
+            wwda2 <- cbind(wwda2, Percent.Foci.Coverage.of.Not.Clones = tapply(wwda$Not.Clones.Foci.Area, wwda$Image.Name , sum) *100/ tapply(wwda$Not.Clones.Area , wwda$Image.Name , sum))
+            # wwda2 <- cbind(wwda2, Competitive.Index = c( c( tapply(wwda$Center.Foci.Area , wwda$Image.Name , sum) / tapply(wwda$Center.Area , wwda$Image.Name , sum) )
             #                                              /
-            #                                                  c( tapply(wwda$Border.Caspase, wwda$Image.Name , sum) / tapply(wwda$Border.Area , wwda$Image.Name , sum) ) ))
+            #                                                  c( tapply(wwda$Border.Foci.Area, wwda$Image.Name , sum) / tapply(wwda$Border.Area , wwda$Image.Name , sum) ) ))
             # wwda2 <- cbind(wwda2, log2.Competitive.Index = log(wwda2$Competitive.Index, 2))
           }
           
-          
-          if("Total.Caspase.Cells" %in% colnames(wwda))
+          print ("Foci area processed")
+          if("Total.number.of.Foci" %in% colnames(wwda))
           {
-            wwda2 <- cbind(wwda2, Total.Foci.Count = tapply(wwda$Total.Caspase.Cells , wwda$Image.Name , unique))
-            wwda2 <- cbind(wwda2, Center.Foci.Count = tapply(wwda$Caspase.Count.in.Center , wwda$Image.Name , unique))
-            wwda2 <- cbind(wwda2, Border.Foci.Count = tapply(wwda$Caspase.Count.in.Border , wwda$Image.Name , unique))
-            wwda2 <- cbind(wwda2, Clone.Foci.Count = tapply(wwda$Caspase.Count.in.Border , wwda$Image.Name , unique) + tapply(wwda$Caspase.Count.in.Center , wwda$Image.Name , unique))
-            wwda2 <- cbind(wwda2, Non.Clones.Foci.Count = tapply(wwda$Total.Caspase.Cells , wwda$Image.Name , unique) - tapply(wwda$Caspase.Count.in.Border , wwda$Image.Name , unique) - tapply(wwda$Caspase.Count.in.Center , wwda$Image.Name , unique))
+            wwda2 <- cbind(wwda2, Total.Foci.Count = tapply(wwda$Total.number.of.Foci , wwda$Image.Name , unique))
+            wwda2 <- cbind(wwda2, Center.Foci.Count = tapply(wwda$Foci.Count.in.Center , wwda$Image.Name , unique))
+            wwda2 <- cbind(wwda2, Border.Foci.Count = tapply(wwda$Foci.Count.in.Border , wwda$Image.Name , unique))
+            wwda2 <- cbind(wwda2, Clone.Foci.Count = tapply(wwda$Foci.Count.in.Border , wwda$Image.Name , unique) + tapply(wwda$Foci.Count.in.Center , wwda$Image.Name , unique))
+            wwda2 <- cbind(wwda2, Non.Clones.Foci.Count = tapply(wwda$Total.number.of.Foci , wwda$Image.Name , unique) - tapply(wwda$Foci.Count.in.Border , wwda$Image.Name , unique) - tapply(wwda$Foci.Count.in.Center , wwda$Image.Name , unique))
             
-            wwda2 <- cbind(wwda2, Foci.Density.in.Center = tapply(wwda$Caspase.Count.in.Center , wwda$Image.Name , unique)/ tapply(wwda$Center.Area , wwda$Image.Name , sum))
-            wwda2 <- cbind(wwda2, Foci.Density.in.Border = tapply(wwda$Caspase.Count.in.Border , wwda$Image.Name , unique)/ tapply(wwda$Border.Area , wwda$Image.Name , sum))
+            wwda2 <- cbind(wwda2, Foci.Density.in.Center = tapply(wwda$Foci.Count.in.Center , wwda$Image.Name , unique)/ tapply(wwda$Center.Area , wwda$Image.Name , sum))
+            wwda2 <- cbind(wwda2, Foci.Density.in.Border = tapply(wwda$Foci.Count.in.Border , wwda$Image.Name , unique)/ tapply(wwda$Border.Area , wwda$Image.Name , sum))
             wwda2$Foci.Density.in.Clones <- wwda2$Clone.Foci.Count / wwda2$Clone.Volume
-            # wwda2 <- cbind(wwda2, Average.Cas.Cell.Volume = tapply(wwda$Total.Caspase.Cells , wwda$Image.Name , unique)/ tapply(wwda$Caspase.Area , wwda$Image.Name , sum))
-            # wwda2 <- cbind(wwda2, Average.Cas.Cell.Area.Per.Z.Plane = (tapply(wwda$Total.Caspase.Cells , wwda$Image.Name , unique)/ tapply(wwda$Caspase.Area , wwda$Image.Name , sum)) / (tapply(wwda$Z.level, list(wwda$Image.Name), max) - tapply(wwda$Z.level, list(wwda$Image.Name), min)))
+            # wwda2 <- cbind(wwda2, Average.Cas.Cell.Volume = tapply(wwda$Total.number.of.Foci , wwda$Image.Name , unique)/ tapply(wwda$Foci.Area , wwda$Image.Name , sum))
+            # wwda2 <- cbind(wwda2, Average.Cas.Cell.Area.Per.Z.Plane = (tapply(wwda$Total.number.of.Foci , wwda$Image.Name , unique)/ tapply(wwda$Foci.Area , wwda$Image.Name , sum)) / (tapply(wwda$Z.level, list(wwda$Image.Name), max) - tapply(wwda$Z.level, list(wwda$Image.Name), min)))
             TrueCasCounts <- 1
             
             
@@ -1252,7 +1262,7 @@ server <- function(input, output) {
             TrueNonCasCounts <- 1
           }
           
-          print("Caspase data processed")
+          print("Foci data processed")
           
           if("Clone.Fluorescence.IntDen" %in% colnames(wwda))
           {
@@ -1321,11 +1331,11 @@ server <- function(input, output) {
           
           
           
-          if("NonFoci.Cells.in.Border" %in% colnames(wwda2))
+          if("Number.of.Border.Cells" %in% colnames(wwda2))
           {
             
-            borderCells <- aggregate(wwda2$NonFoci.Cells.in.Border, list(wwda2$ConditionAndExperiment), sum)
-            centerCells <- aggregate(wwda2$NonFoci.Cells.in.Center, list(wwda2$ConditionAndExperiment), sum)
+            borderCells <- aggregate(wwda2$Number.of.Border.Cells, list(wwda2$ConditionAndExperiment), sum)
+            centerCells <- aggregate(wwda2$Number.of.Center.Cells, list(wwda2$ConditionAndExperiment), sum)
             borderCasCells <- aggregate(wwda2$Border.Foci.Count, list(wwda2$ConditionAndExperiment), sum)
             centerCasCells <- aggregate(wwda2$Center.Foci.Count, list(wwda2$ConditionAndExperiment), sum)        
             
@@ -1333,10 +1343,10 @@ server <- function(input, output) {
             #Format these values into a table suitable for a fisher test
             deathTable <- data.frame(
               Genotype = borderCells[,1],
-              NotCasCellsInBorder = borderCells[,2],
-              CasCellsInBorder = borderCasCells[,2],
-              NotCasCellsInCenter = centerCells[,2],
-              CasCellsInCenter = centerCasCells[,2]
+              CellsInBorder = borderCells[,2],
+              FociInBorder = borderCasCells[,2],
+              CellsInCenter = centerCells[,2],
+              FociInCenter = centerCasCells[,2]
             )
             
             values$deathTable <- deathTable
@@ -1347,7 +1357,7 @@ server <- function(input, output) {
           
           tryCatch(
             # This is we run the fisher test for individual wing discs
-            {      
+            {
               
               if(input$runFishers2 == TRUE){
                 
@@ -1363,10 +1373,10 @@ server <- function(input, output) {
                 while (x < lengthotron){
                   
                   #Get data and format into 2x2 contingency table
-                  fishers <- matrix(c(wwda2[x+1, "NonFoci.Cells.in.Border"],wwda2[x+1, "NonFoci.Cells.in.Center"], wwda2[x+1, "Border.Foci.Count"], wwda2[x+1, "Center.Foci.Count"]), ncol = 2)
-                  output$fishyPrint <- renderText("Cell numbers were directly counted by the macro")
-                  colnames(fishers)<-c("NotDying", "Dying")
-                  colnames(fishers)<-c("NotDying", "Dying")
+                  fishers <- matrix(c(wwda2[x+1, "Number.of.Border.Cells"],wwda2[x+1, "Number.of.Center.Cells"], wwda2[x+1, "Border.Foci.Count"], wwda2[x+1, "Center.Foci.Count"]), ncol = 2)
+                  
+                  colnames(fishers)<-c("Foci-", "Foci+")
+                  colnames(fishers)<-c("Foci-", "Foci+")
                   rownames(fishers)<-c("Border", "Center")
                   fishers<-as.table(fishers)
                   
@@ -1417,7 +1427,7 @@ server <- function(input, output) {
                 }
                 
                 
-                fishCounts <- data.frame(ConditionAndExperiment = Experimentname, number.of.competing.wing.discs = significantCount, number.of.noncompeting.wing.discs = nonSignificant)
+                fishCounts <- data.frame(ConditionAndExperiment = Experimentname, Number.of.Significant.Samples = significantCount, Number.of.Non.Significant.Samples = nonSignificant)
                 output$fishyCounty <- renderTable(fishCounts, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")
                 
               }
@@ -1486,7 +1496,7 @@ server <- function(input, output) {
         
         
       },
-      
+
       error=function(error_message) {
         message("Unable to run wing disc analysis")
         return(NA)
@@ -2570,7 +2580,9 @@ server <- function(input, output) {
           if (input$cgDot == "No color grouping"){
             values$dotColor <- input$dotColor
           } else {
-            values$dotColor <- values$wwda2[,c( as.character(input$cgDot))]
+            items <- values$wwda2[,c( as.character(input$cgDot))]
+            dict_names <- unique(items)
+            values$dotColor <- match(items, dict_names) + 1
           }
         }
         
@@ -2581,7 +2593,9 @@ server <- function(input, output) {
           if (input$cgDotFill == "No color grouping"){
             values$dotFill <- input$dotFill
           } else {
-            values$dotFill <- values$wwda2[,c( as.character(input$cgDotFill))]
+            items <- values$wwda2[,c( as.character(input$cgDotFill))]
+            dict_names <- unique(items)
+            values$dotFill <- match(items, dict_names) + 1
           }
         }
         
@@ -2596,7 +2610,12 @@ server <- function(input, output) {
           if (input$cgColor == "No color grouping"){
             values$color <- input$color
           } else {
-            values$color <- values$wwda2[,c( as.character(input$cgColor))]
+            items <- values$wwda2[,c( as.character(input$cgColor))]
+            dict_names <- unique(items)
+            values$color <- match(items, dict_names) + 1
+
+     
+            
           }
         }
         
@@ -2606,7 +2625,10 @@ server <- function(input, output) {
           if (input$cgColorFill == "No color grouping"){
             values$fill <- input$fill
           } else {
-            values$fill <- values$wwda2[,c( as.character(input$cgColorFill))]
+            items <- values$wwda2[,c( as.character(input$cgColorFill))]
+            dict_names <- unique(items)
+            values$fill <- match(items, dict_names) + 3
+
           }
         }
         
@@ -2703,11 +2725,21 @@ server <- function(input, output) {
           
           
           pairedvolo <- FALSE
-          p1<- ggplot( values$wwda2 , aes( x= values$wwda2$Condition  , y= values$plotData,  fill=values$fill, color = values$color ))
+          
+
+
+          p1<- ggplot( values$wwda2 , aes( x= values$wwda2$Condition  , y= values$plotData ))
+          
+
           
           if (input$plotType == "Dot Plot w/ Box Plot"){
             
-            p1<- p1 + geom_boxplot( width=0.4,color = unique(values$color), fill = unique(values$fill) )
+
+            
+            p1<- p1 + geom_boxplot( width=0.4,color = unique(values$color), fill = unique(values$fill)) 
+            
+          
+
             
           } 
           else {
@@ -3265,7 +3297,7 @@ server <- function(input, output) {
             #Get death table and format it into a 2x2 contingency table
             gen <- deathTable[x+1, 1]
             fishers <- matrix(c(deathTable[x+1,2], deathTable[x+1,3], deathTable[x+1,4], deathTable[x+1,5]), ncol = 2)
-            colnames(fishers)<-c("NotDying", "Dying")
+            colnames(fishers)<-c("Foci-", "Foci+")
             rownames(fishers)<-c("Border", "Center")
             fishers<-as.table(fishers)
             
@@ -3290,7 +3322,7 @@ server <- function(input, output) {
           colnames(fishResult) <- c("p-value")
           fishResultFinal = data.frame(Genotype = deathTable$Genotype, fishResult, conf.interval.from = fishConfidence, conf.interval.to = fishConfidenceUB, p.adjusted = as.character(pAdj), p.adjustment.method = input$pAdj, odds.ratio = fishOddsRatio)
           output$fishBC <- renderTable(fishResultFinal, hover=TRUE, border=TRUE, spacing="s", digits=5, align ="l")  
-          output$fishBCHeader <- renderText("Fisher's Exact Test for dying cells in the border vs. dying cells in the center")
+          output$fishBCHeader <- renderText("Fisher's Exact Test for Foci in the border vs. Foci in the center")
         }
       },
       # Error for unable to run fisher test
@@ -3698,7 +3730,7 @@ server <- function(input, output) {
       {
         
         if (input$runFishers == TRUE){
-          #Get the cell death count data table
+          #Get the foci count data table
           deathTable <- values$deathTable
           
           #Initialize variables to hold our results
@@ -3723,7 +3755,7 @@ server <- function(input, output) {
               
               #format these rows into a 2x2 contingency table and add headers
               fishers <- matrix(c(deathTable[x+1,2], deathTable[y+1,2], deathTable[x+1,3], deathTable[y+1,3]), ncol = 2)
-              colnames(fishers)<-c("NotDying", "Dying")
+              colnames(fishers)<-c("Foci-", "Foci+")
               rownames(fishers)<-c("Condition1", "Condition2")
               fishers<-as.table(fishers)
               
