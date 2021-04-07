@@ -154,11 +154,14 @@ server <- function(input, output) {
   #Create our regression variable options
   output$regressionSelect1 = renderUI({
     if (input$linkFunction == "Logistic"){
-      if (((input$sepTimePoints == "Complete single cell analysis") | (input$sepTimePoints == "Complete single cell analysis - timelapse"))){
+     
+      if (((isTRUE(input$sepTimePoints == "Complete single cell analysis")) | isTRUE((input$sepTimePoints == "Complete single cell analysis - timelapse")))){
+ 
         regTitle <-"Select dependent variable"
         regOptions1 <- values$regchoices
         output$LogRegressionText <- NULL
       } else {
+        
         regTitle <- "Select Negative Dependent Variable:"
         regOptions1 <- values$choices
         output$LogRegressionText <- renderText("Acceptable inputs are (1)  data columns containing the probability of success, (2) a column where each cell is marked as either a success or a failure,  or (3) two separate data columns - one with the number of failures and another with a number of successes. If entering data of type (3), specify the failure count in this field and the success count in the field below.")
@@ -181,7 +184,7 @@ server <- function(input, output) {
     validate(
       need((input$linkFunction == "Logistic") , "")
     )
-    if(((input$sepTimePoints == "Complete single cell analysis") | (input$sepTimePoints == "Complete single cell analysis - timelapse"))){
+    if(((isTRUE(input$sepTimePoints == "Complete single cell analysis")) | isTRUE((input$sepTimePoints == "Complete single cell analysis - timelapse")))){
       validate(
         need((input$excludecheckreg==TRUE) && (input$excludecheckreg2==TRUE), "")
       )
