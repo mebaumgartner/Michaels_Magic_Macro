@@ -1154,6 +1154,9 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 					borderROI = borderROI.clone()
 					borderROI = ShapeRoi(borderROI)
 
+					if (fluoChoice == True):
+						fluoROI = cloneROI.clone()
+
 
 					#Get the pouch ROI
 					bName = rm.getName(c)
@@ -1193,7 +1196,7 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 
 							if (fluoChoice == True):
 								imp.setSlice(int(bName))
-								imp.setRoi(c)
+								imp.setRoi(fluoROI)
 
 								IJ.run(imp, "Measure", "")
 								count = count + 1
