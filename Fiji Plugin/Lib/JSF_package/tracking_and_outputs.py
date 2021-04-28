@@ -1200,7 +1200,8 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 
 								IJ.run(imp, "Measure", "")
 								count = count + 1
-								centroidFluorescence[[genotypeString]] = centroidFluorescence[[genotypeString]] + rt.getValue("Mean", count)
+								cellFluoVal = rt.getValue("Mean", count)
+								
 
 
 					#Check if the ROI overlaps with the Pouch region at all
@@ -1761,6 +1762,9 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 
 						distanceToCentroid = distanceToCentroid + [distanceVal]
 						distanceToPerimeter = distanceToPerimeter + [distanceBordVal]
+						
+						if (fluoChoice == True):
+							centroidFluorescence = centroidFluorescence + [cellFluoVal]
 
 			#Add our overall counts, regardless of border/center
 			if trackCount == 2:

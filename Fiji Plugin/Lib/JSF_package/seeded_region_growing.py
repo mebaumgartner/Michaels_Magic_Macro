@@ -3,7 +3,7 @@
 
 def seededRegionGrowing(impToBeProcessed, seedMask, numFrames, iHeight, rm, invertSeedClones, minSeedSizeClones):
 	
-	from net.sf.ij_plugins.im3d.grow import SRG
+	from ij_plugins.toolkit.im3d.grow import SRG
 	from ij.process import ByteProcessor, ImageProcessor
 	from ij import ImagePlus, IJ
 	from ij.plugin.filter import MaximumFinder, ParticleAnalyzer

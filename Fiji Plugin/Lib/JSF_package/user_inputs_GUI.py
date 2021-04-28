@@ -26,9 +26,8 @@ except:
 
 #Do the same for SRG
 
-
 try:
-	from net.sf.ij_plugins.im3d.grow import SRG
+	from ij_plugins.toolkit.im3d.grow import SRG
 	
 	seedInstalled = 1
 	

@@ -950,8 +950,8 @@ server <- function(input, output) {
   analysis <- observeEvent(input$go, {
     
     #This trycatch loop encloses the entire wing disc analysis function
-    tryCatch(
-      {
+    # tryCatch(
+    #   {
 
         
         #Read genotype assignment csv file to the variable 'trad'
@@ -1060,7 +1060,7 @@ server <- function(input, output) {
             
             breakLoop <- TRUE
             breaker <- FALSE
-            queryString <- paste(baseString, toString(count), sep="_")
+            queryString <- paste(baseString, toString(count), sep=":")
             count <- count + 1
             
             isGenotypeNum <- grepl(queryString, i, fixed = TRUE)
@@ -1069,6 +1069,7 @@ server <- function(input, output) {
             if (breaker == TRUE){breakLoop <- FALSE}
           }
         }
+        print (count)
         count <- count - 2
         print("Genotypes determined")
         
@@ -1079,12 +1080,12 @@ server <- function(input, output) {
         ROI.Area <- wwdaFull[, grepl("ROI.Area", names(wwdaFull))]
         
         
-        
+        print (1)
         
         #Loop through, get all the columns corresponding to one genotype, and store them in an array
         chal <- 1
         while(chal <= count){
-          
+          print (2)
           print("Genotypes loop initiated")
           queryString1 <- paste(baseString, toString(chal), sep="_")
           queryString2 <- paste(baseString, toString(chal), sep=":")
@@ -1117,6 +1118,8 @@ server <- function(input, output) {
     
           
           #Here we make our dataframe 'wwda2,' which has all of our data from all our z-levels collated per wing disc
+          
+          print (1)
           wwda2 <- data.frame(
             File = tapply(as.character(wwda$File) , wwda$Image.Name , unique),
             Image.Name = tapply(as.character(wwda$Image.Name) , wwda$Image.Name , unique),
@@ -1498,13 +1501,13 @@ server <- function(input, output) {
         values$wwda2<-wwda2
         
         
-      },
-
-      error=function(error_message) {
-        message("Unable to run wing disc analysis")
-        return(NA)
-      }
-    )
+    #   },
+    # 
+    #   error=function(error_message) {
+    #     message("Unable to run wing disc analysis")
+    #     return(NA)
+    #   }
+    # )
     
     # #This loop attempts to merge the data table made by the wing disc analysis, and merge it with the single cell counts
     tryCatch({
@@ -1736,7 +1739,7 @@ server <- function(input, output) {
       
       if(isTRUE(input$excludecheckreg2==TRUE)){
         
-        if (input$excludecheckreg == FALSE){
+        if (isTRUE(input$excludecheckreg == FALSE)){
           excluder <- paste("logRegData$", input$regressionParameterExclude, input$excludeOperatorReg,input$excludeValuereg, sep = "")
         } else {
           excluder <- paste("logRegData$", input$regressionParameterExclude, input$excludeOperatorReg," logRegData$",input$regressionParameter2, sep = "")
@@ -1765,7 +1768,7 @@ server <- function(input, output) {
       values$newFactors <- colnames(logRegDataSub)
       
       
-      if (input$linkFunction == "Logistic"  ) {
+      if (isTRUE(input$linkFunction == "Logistic"  )) {
         
         #Run our logistic regression
         
@@ -1849,7 +1852,7 @@ server <- function(input, output) {
           } else { probability.observed = logRegData[[nullVal]]}
         )
         
-        if (  ((input$sepTimePoints == "Complete single cell analysis") | (input$sepTimePoints == "Complete single cell analysis - timelapse"))){
+        if (  (  isTRUE(  (input$sepTimePoints == "Complete single cell analysis") | (input$sepTimePoints == "Complete single cell analysis - timelapse")))){
           predicted.data.plot <- ggplot(data=predicted.data, aes(x=probability.predicted, y=probability.observed))+geom_point()+geom_smooth(method='glm', formula= y~x) + theme_tufte() +ggtitle("Predicted probability vs. observed probability")
           output$predicted.data.plot <- renderPlot(predicted.data.plot)
           
@@ -1861,7 +1864,7 @@ server <- function(input, output) {
         output$residualsPlot <- renderPlot(glm.diag.plots(regression)) 
         output$residualsPlotHeader <- renderText("GLM Diagnostic Plots")
         
-      } else if (input$linkFunction == "Poisson"){
+      } else if (isTRUE( input$linkFunction == "Poisson")){
         meanVarTable <- data.frame(
           variable = nullVal,
           mean = mean(logRegData[[nullVal]]),
@@ -1963,7 +1966,7 @@ server <- function(input, output) {
         output$residualsPlot <- renderPlot(glm.diag.plots(regression)) 
         output$residualsPlotHeader <- renderText("GLM Diagnostic Plots")
         
-      } else if (input$linkFunction == "Negative Binomial") {
+      } else if (isTRUE( input$linkFunction == "Negative Binomial")) {
         
         meanVarTable <- data.frame(
           variable = nullVal,
@@ -2149,7 +2152,7 @@ server <- function(input, output) {
       
       #Plot values to correlation matrix
       tryCatch({
-        if ((input$linkFunction == "Logistic") & isFALSE(input$sepTimePoints == "Complete single cell analysis") & isFALSE (input$sepTimePoints == "Complete single cell analysis - timelapse")) {
+        if (isTRUE(input$linkFunction == "Logistic") & isFALSE(input$sepTimePoints == "Complete single cell analysis") & isFALSE (input$sepTimePoints == "Complete single cell analysis - timelapse")) {
           Dependent.Variable <- logRegData[[posVal]] / ( logRegData[[nullVal]] + logRegData[[posVal]])
           
         } else {
