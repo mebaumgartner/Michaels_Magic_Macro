@@ -1,7 +1,7 @@
 
 #Here are the libraries we use
 ################################################################################
-list.of.packages <- c("shiny", "Cairo",  "PerformanceAnalytics", "boot", "MASS", "car", "ggplot2", "RColorBrewer", "ggpubr", "markdown", "ggsignif", "rhandsontable", "msm", "dplyr", "car", "magrittr", "ICSNP", "mvnormtest", "psych", "corrplot", "rcompanion", "stringr", "effsize", "sandwich", "ggthemes", "shinyBS", "shinythemes", "reshape2", "effects")
+list.of.packages <- c("shiny", "jtools", "Cairo",  "PerformanceAnalytics", "boot", "MASS", "car", "ggplot2", "RColorBrewer", "ggpubr", "markdown", "ggsignif", "rhandsontable", "msm", "dplyr", "car", "magrittr", "ICSNP", "mvnormtest", "psych", "corrplot", "rcompanion", "stringr", "effsize", "sandwich", "ggthemes", "shinyBS", "shinythemes", "reshape2", "effects")
 library(data.table)
 library(ggplot2)
 library("RColorBrewer")
@@ -31,7 +31,7 @@ library(reshape2)
 library(shinythemes)
 library(effects)
 library(Cairo)
-
+library(jtools)
 
 
 # Define UI for application
@@ -211,8 +211,7 @@ shinyUI(
                                                            hr(),
                                                            h3("Organize data"),
                                                            
-                                                           checkboxInput("orderWeek", "Sort by Experiment?", FALSE),
-                                                           checkboxInput("orderGene", "Sort by gene?", FALSE),
+
                                                            checkboxInput("facetChoice", "Facet output plots?", TRUE),
                                                            checkboxInput("lm", "lm regression line?", TRUE),
                                                            tipify(textInput("facet", "Custom facet (format of 'rows ~ columns')", ""),"Input facet specification in the form of cols ~ rows where cols and rows are either column names or . for none. ", placement="right", trigger="hover" ),
@@ -365,20 +364,7 @@ shinyUI(
                   ))
                  
                         
-                  ),
-
-           tabPanel("Details and Formulas",
-                    h3("On this panel, functions used for specific statistical tests are provided. This tool was made using R Shiny software, and all statistical tests were conducted using accepted R software functions."),
-                    h4("(1) Wilcoxon, t-test, anova, and kruskal-wallis tests are conducted using the 'compare_means()' function. Pairing is set to TRUE in the case of a paired box plot"),
-                    h4("(2) P-value adjustments in the case of multiple pairwise comparisons are done via the 'p.adjust.method' function"),
-                    h4("(3) Fisher tests are conducted using the fisher.test() function on a 2x2 contingency table of dying vs. not-dying cells"),
-                    h4("(4) For parametric assumptions testing, the shapiro-wilks test is conducted using the 'shapiro.test' function and the fligner-killeen test is conducted using the 'fligner.test' function"),
-                    h4("(5) For effect size metrics, cohen's d and hedges' g are conducted using the 'cohen.d' function, and cliff's delta is conducted using the 'cliff.delta' function, both from the 'effsize' package."),
-                    h4("(6) Spearman's Rho, Pearson's R, and Kendall's Tau are conducted using the 'cor.test' function"),
-                    h4("(7) The Hotelling's T2 test is conducted using the 'HotellingsT2' function. The multivariate shapiro-wilks test is conducted using 'mvnormtest::mshapiro.test.'"),
-                    h4("(8) The 'glm' function is used to conduct logistic and poisson regression. The 'lm' function is used to conduct linear regressio. The 'glm.nb' function is used to conduct negative binomial regression."),
-                    h4("(9) The correlation matrix is generated using the PerformanceAnalytics package")
-                    )       
+                  )
          )
 
          

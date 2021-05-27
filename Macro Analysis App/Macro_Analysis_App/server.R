@@ -1,21 +1,5 @@
 
 
-#Create data_summary variables for standard deviation
-data_summary <- function(x) {
-  m <- mean(x)
-  ymin <- m
-  ymax <- m + sd(x)
-  return(c(y = m, ymin = m, ymax = ymax))
-}
-
-data_summary2 <- function(x) {
-  m <- median(x)
-  ymin <- m
-  ymax <- m + sd(x)
-  return(c(y = m, ymin = m, ymax = m))
-}
-
-
 
 ############################################################################################################################################################
 ############################################################################################################################################################
@@ -169,8 +153,7 @@ server <- function(input, output) {
         c(
           "Pearson r Correlation",
           "Kendall Tau Correlation",
-          "Spearman's Rho Correlation",
-          "Hotellings T-Squared Test"
+          "Spearman's Rho Correlation"
         )
     } else if (isTRUE(input$plotType == "Line Plot")) {
       statsOptions <- c('N/A')
@@ -542,10 +525,15 @@ server <- function(input, output) {
           fill = TRUE
         )
       Image.Name <- unique(wda$Image.Name)
+      
+      
+      
       values$genAssign <- data.frame(Image.Name)
       values$genAssign$Experiment <- "Specify experiment/grouping"
       values$genAssign$Condition <- "Specify condition/genotype"
-      randoTable <- FALSE
+      if (colnames(wda)[1] != "X"){
+        randoTable <- FALSE
+      }
     },
     
     error = function(error_message) {
@@ -573,9 +561,11 @@ server <- function(input, output) {
       values$genAssign <- FileImage
       values$genAssign$Experiment <- "Specify experiment/grouping"
       values$genAssign$Condition <- "Specify condition/genotype"
-      randoTable <- FALSE
-      values$switchAnalysis <- TRUE
-      
+      if (colnames(wda)[1] != "X"){
+  
+        randoTable <- FALSE
+        values$switchAnalysis <- TRUE
+      }
       
     },
     
@@ -598,10 +588,12 @@ server <- function(input, output) {
           )
         
         ID <- 1:nrow(wda)
-        Experiment <-
-          rep("Specify experiment/grouping", nrow(wda))
-        Condition <- rep("Specify genotype", nrow(wda))
-        wda <- cbind(ID, Experiment, Condition, wda)
+        if (colnames(wda)[2:3] != c("File", "Image.Name")){
+            Experiment <-
+              rep("Specify experiment/grouping", nrow(wda))
+            Condition <- rep("Specify genotype", nrow(wda))
+            wda <- cbind(ID, Experiment, Condition, wda)
+        }
         values$genAssign <- data.frame(wda)
       }
     },
@@ -2466,7 +2458,7 @@ server <- function(input, output) {
       wwda2$Image.Name <-
         gsub(', timepoint:.*', "", wwda2$Image.Name)
       
-      
+      #Normalize z-levels to starting z-plane
       wwda2[, grep(pattern = "^Single.Cell.Z.Level.Genotype.", colnames(wwda2))] <-
         wwda2[, grep(pattern = "^Single.Cell.Z.Level.Genotype", colnames(wwda2))] - wwda2[, grep(pattern =
                                                                                                    "^Starting.Z.Plane", colnames(wwda2))]
@@ -3189,6 +3181,7 @@ server <- function(input, output) {
         
       } else {
         
+       
         #Here we run the linear regression analysis
         dependent <- logRegData[[nullVal]]
         logRegDataSub$dependent <- dependent
@@ -3196,7 +3189,23 @@ server <- function(input, output) {
           lm(dependent ~ .,  data = logRegDataSub, na.action = na.omit)
         
         #Convert results to table output for display
-        regOutput <- summ(regression)
+        print ("Linear regression performed")
+        
+       # regOutput <- data.frame(Note = "Linear regression results are displayed in the Raw Outputs tab")
+        regOutput <- summ(regression, confint = TRUE, digits = 4)
+  
+        regOutput <- regOutput$coeftable
+    
+        pvalstobe <- regOutput[,5]
+    
+        pvalsadj <-  p.adjust(pvalstobe,
+                              method = input$regAdjust ,
+                              n = length(pvalstobe))
+        
+      
+        regOutput <- cbind(regOutput, pvalsadj)
+      
+        colnames(regOutput) <- c("Estimate", "Conf. Int. Upp.", "Conf. Int. Low.", "t-value", "p-value", paste("Adjusted p-value(", input$regAdjust, ")", sep = ""))
         
         output$regressionData <-
           renderTable(
@@ -3209,7 +3218,7 @@ server <- function(input, output) {
             align = "l"
           )
         
-        
+        print ("Linear regression notice")
         
         #Run non-constant variances of error test
         tryCatch({
@@ -3279,7 +3288,6 @@ server <- function(input, output) {
       #Attempt to run VIF test
       tryCatch({
         vifOut <- car::vif(regression)
-        
         output$vifHeader <-
           renderText("Variance inflation factors test (VIF) for multicollinear features")
         
@@ -3341,11 +3349,14 @@ server <- function(input, output) {
       })
       
       
+      print ("Regression data processed")
       
+
       logSum <- summary(regression)
       output$regressionSummary <- renderPrint(logSum)
       
       
+      print ("Regression raw data printed")
       
       #Make effects plot
       formulaP <- as.formula("~.")
@@ -3603,12 +3614,7 @@ server <- function(input, output) {
     
     
     
-    if (input$orderWeek == TRUE) {
-      values$wwda2 <- values$wwda2[order(values$wwda2$Experiment)]
-    }
-    if (input$orderGene == TRUE) {
-      values$wwda2 <- values$wwda2[order(values$wwda2$Condition)]
-    }
+
     
     #yarp is the data
     yarp <- values$wwda2
@@ -3624,7 +3630,6 @@ server <- function(input, output) {
     
     #Set up the comparisons variable for stat_compare_means
     comparisonVectors <- list()
-    
     
     #This loop goes through and determines which comparisons to make for statistical tests and outputs on graphs
     comparisonsToBe <- unique(values$wwda2$Condition)
@@ -4204,7 +4209,7 @@ server <- function(input, output) {
         }
         
         if(input$stdev == TRUE){
-          p1 <- p1 + stat_summary(fun.y = mean, fun.ymin = function(x) mean(x)-sd(x), fun.ymax = function(x) mean(x)+sd(x), colour = input$stColor, shape = input$stShape, size = input$stSize)
+          p1 <- p1 + stat_summary(fun = mean, fun.min = function(x) mean(x)-sd(x), fun.max = function(x) mean(x)+sd(x), colour = input$stColor, shape = input$stShape, size = input$stSize)
         }
         
 
@@ -4803,7 +4808,7 @@ server <- function(input, output) {
               
             
             
-            print (fullLabel)
+          
             
             anno_df$fullLabel <- fullLabel
             
@@ -4815,6 +4820,9 @@ server <- function(input, output) {
                 p1 + stat_compare_means(paired = pairedvolo, method = values$method)
               
             } else {
+              
+              #This is where we workout how to position all of the pairwise comparisons on the graphs
+              
               if (input$refgroup != "All/Basemean") {
                 gb <- ggplot_build(p1)
                 ymax = gb$layout$panel_params[[1]]$y.range[2]
@@ -4836,7 +4844,115 @@ server <- function(input, output) {
                   y_pos <- sort(y_pos, decreasing = FALSE)
                 }
                 
-               
+                print (1)
+                print (fullLabel)
+                print(textSizeSig)
+                print (y_pos)
+                
+                #With facetted graphs, we need to duplicate the y_positions
+                
+                if ((length(y_pos) != 1) & (length(y_pos)<length(fullLabel)) & (length(unique(values$wwda2$Condition)) > 1  )){
+                  
+                  countLim <- ceiling( length (fullLabel) / length (y_pos))
+        
+                  counter <- 1
+                  
+                  y_posNew <- y_pos
+                  y_posArch <- y_pos
+                  
+                  while (counter < countLim) {
+                    y_posNew <- c(y_posNew, y_pos)
+                    counter <- counter + 1
+                  }
+                  
+                  y_pos <- y_posNew
+                  
+                  
+                  
+                  #If the user has given different sets of conditions per experiment, we need to omit excess positions
+                  
+                  print ("Excluding excess comparisons")
+                  skipVector = c()
+                  for (ExperimentL in (unique(values$wwda2$Experiment))) {
+                    
+                  
+                    #Set up the comparisons variable for stat_compare_means
+                    comparisonVectorsNew <- list()
+                    
+                   
+                
+                    #This loop goes through and determines which comparisons to make for statistical tests and outputs on graphs
+                    newValues <- values$wwda2[values$wwda2$Experiment == ExperimentL, ]
+                  
+                    reffy <- input$refgroup
+                    
+                    
+                    comparisonsToBe <- unique(newValues$Condition)
+                    if (isFALSE (reffy %in% comparisonsToBe)){
+                      y_pos <- c(y_pos, y_posArch)
+                    }
+                    
+                    
+                    comparisonsToBe2 <- comparisonsToBe[-1]
+                    
+                    
+                    
+                  
+                    
+                    
+                  
+                    if (isTRUE(input$refgroup != "All/Basemean")) {
+                      countington <- 1
+                      for (item in comparisonsToBe) {
+                        if (isTRUE(input$refgroup == "None")) {
+                          for (item2 in comparisonsToBe2) {
+                            comparisonVectorsNew[[countington]] <- c(item, item2)
+                            countington <- countington + 1
+                          }
+                          comparisonsToBe2 <- comparisonsToBe2[-1]
+                          
+                        } else {
+                        
+                          if ( (isTRUE(item != input$refgroup)) & (isTRUE(reffy %in% comparisonsToBe))) {
+                            
+                            comparisonVectorsNew[[countington]] <- c(input$refgroup, item)
+                            countington <- countington + 1
+                          } 
+                            
+                          
+                          
+                        }
+                      }
+                    }
+                  
+                    for (item in comparisonVectors){
+                      
+                    
+                      if (list(item) %in% comparisonVectorsNew){
+                        skipVector <- c(skipVector, 1)
+                      } else {
+                        print (c("item", item))
+                        skipVector <- c(skipVector, NA)
+                      }
+                    }
+                    
+                  }
+                  
+                  print (skipVector)
+                  print (y_pos)
+                  
+                  skipFrame <- data.frame(
+                    col1 = y_pos,
+                    col2 = skipVector
+                  )
+                  
+                  print ("Excess comparisons omitted")
+                  
+                  skipFrame <- na.omit(skipFrame)
+                  y_pos <- skipFrame$col1
+                  
+                  print (y_pos)
+                }
                 
                 if (nrow(data.frame(anno_df)) >= 1) {
                   if (adjustedP == TRUE) {
