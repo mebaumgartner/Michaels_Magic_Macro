@@ -1,7 +1,7 @@
 
 #Here are the libraries we use
 ################################################################################
-list.of.packages <- c("shiny", "PerformanceAnalytics", "boot", "MASS", "car", "ggplot2", "RColorBrewer", "ggpubr", "markdown", "ggsignif", "rhandsontable", "msm", "dplyr", "car", "magrittr", "ICSNP", "mvnormtest", "psych", "corrplot", "rcompanion", "stringr", "effsize", "sandwich", "ggthemes", "shinyBS", "shinythemes", "reshape2", "effects")
+list.of.packages <- c("shiny", "Cairo",  "PerformanceAnalytics", "boot", "MASS", "car", "ggplot2", "RColorBrewer", "ggpubr", "markdown", "ggsignif", "rhandsontable", "msm", "dplyr", "car", "magrittr", "ICSNP", "mvnormtest", "psych", "corrplot", "rcompanion", "stringr", "effsize", "sandwich", "ggthemes", "shinyBS", "shinythemes", "reshape2", "effects")
 library(data.table)
 library(ggplot2)
 library("RColorBrewer")
@@ -30,6 +30,8 @@ library(shinyBS)
 library(reshape2)
 library(shinythemes)
 library(effects)
+library(Cairo)
+
 
 
 # Define UI for application
@@ -149,9 +151,9 @@ shinyUI(
                                   tabPanel("Customize and Export Plot",
                                            fluidRow(column(2,  
                                                            h3("Download plot"),
-                                                           numericInput("plotheight", "Plot export height", "3"),
-                                                           numericInput("plotwidth", "Plot export width", "3"),
-                                                           selectInput("plotUnit", "Height and width units", choices=c("cm", "mm", "in", "px")),
+                                                           numericInput("plotheight", "Plot export height", "14"),
+                                                           numericInput("plotwidth", "Plot export width", "14"),
+                                                           #selectInput("plotUnit", "Height and width units", choices=c("cm", "mm", "in", "px")),
                                                            numericInput("plotres", "Plot resolution", "300"),
                                                            downloadButton("plotDownload", "Download Plot"),  
                                                            hr(),
@@ -163,22 +165,29 @@ shinyUI(
                                                            checkboxInput("xDel", "Remove X-axis labels?", FALSE),
                                                            textInput("xValue", "Add X-axis label:", ""),
                                                            textInput("axisFont", "Adjust axis font size: ", 12),
-                                                           textInput("font", "Change font family to:", "")),
+                                                           
+                                                           hr(),
+                                                           h3("Summary statistics"),
+                                                           checkboxInput("stdev", "Include mean +/- standard deviation?", TRUE),
+                                                           textInput("stColor", "Set standard deviation color:", "red"),
+                                                           numericInput("stShape", "Set standard deviation shape:", 18),
+                                                           numericInput("stSize", "Set standard deviation size:", 1),
+                                                           ),
                                                     
                                                     
                                                     
                                                     column(2,
                                                            h3("Plot colors"),
-                                                           textInput("dotFill", "Set dot fill color:", "black"),
-                                                           textInput("dotColor", "Set dot color:", "white"),
-                                                           textInput("fill", "Set plot fill color:", "lightgrey"),
-                                                           textInput("color", "Set plot general color:", "black"),
-                                                           textInput("backgroundFill", "Set background fill color:", "white"),
+                                                           textInput("dotFill", "Set dot fill color:", "lightblue2"),
+                                                           textInput("dotColor", "Set dot color:", "grey3"),
+                                                           textInput("fill", "Set plot fill color:", "lightblue2"),
+                                                           textInput("color", "Set plot general color:", "grey25"),
+                                                           textInput("backgroundFill", "Set background fill color:", "grey25"),
                                                            textInput("backgroundColor", "Set background color:", "white"),
-                                                           textInput("statsColor", "Set standard deviation marker color:", "red"),
-                                                           textInput("majorGridColor", "Set major grid line color:", "white"),
+                                                           
+                                                           textInput("majorGridColor", "Set major grid line color:", "grey95"),
                                                            textInput("minorGridColor", "Set minor grid line color:", "white"),
-                                                           textInput("pairedLineColor", "Set paired line color:", "grey"),
+                                                           textInput("pairedLineColor", "Set paired line color:", "grey44"),
                                                            
                                                            h3("Color dots according to groupings?"),
                                                            selectInput("cgDot", "Group Dot Color By:", choices=c("No color grouping", "Condition", "Experiment", "ConditionAndExperiment")),
@@ -191,7 +200,7 @@ shinyUI(
                                                            checkboxInput("pDisplay", "Include p-value on plot?", TRUE),
                                                            checkboxInput("adjustedP", "Display adjusted p-value?", FALSE),
                                                            checkboxInput("effSizeDisplay", "Display effect size?", TRUE),
-                                                           checkboxInput("ascending", "Display ascenting p-value placement?", TRUE),
+                                                           checkboxInput("ascending", "Display ascending p-value placement?", TRUE),
                                                            numericInput("y_offset", "Shift p-values down by factor of:", "0"),
                                                            numericInput("step_size", "Step size between adjacent bars", "0.1"),
                                                            numericInput("tipL", "Tip length", "0.03"),
@@ -225,6 +234,8 @@ shinyUI(
                                                            numericInput("minorGridSize", "Adjust minor gridline size", "0.25", min = 0),
                                                            numericInput("pairedLineSize", "Adjust paired line size", "0.4", min = 0),
                                                            numericInput("bins", "Set histogram binwidth = ", ".025"),
+                                                           checkboxInput("jitterChoice", "Include jitter on dotplots?", TRUE),
+                                                           numericInput("jitter", "Set dot jitter value:", 0.01),
                                                            
                                                            checkboxInput("limitx", "Custom x-axis limits?", FALSE),
                                                            numericInput("xMin", "Set x-axis minimum limit = ", "0"),
@@ -343,9 +354,9 @@ shinyUI(
                          ),
                          tabPanel("Download Plot",
                           h3("Download plot"),
-                          numericInput("plotheightreg", "Plot export height", "3"),
-                          numericInput("plotwidthreg", "Plot export width", "3"),
-                          selectInput("plotUnitreg", "Height and width units", choices=c("cm", "mm", "in", "px")),
+                          numericInput("plotheightreg", "Plot export height", "14"),
+                          numericInput("plotwidthreg", "Plot export width", "14"),
+                          #selectInput("plotUnitreg", "Height and width units", choices=c("cm", "mm", "in", "px")),
                           numericInput("plotresreg", "Plot resolution", "300"),
                           downloadButton("plotDownloadReg", "Download Plot"),  
                           
