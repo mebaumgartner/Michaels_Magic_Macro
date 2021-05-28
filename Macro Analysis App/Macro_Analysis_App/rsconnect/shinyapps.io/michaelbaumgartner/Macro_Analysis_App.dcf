@@ -5,9 +5,9 @@ account: michaelbaumgartner
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2174861
-bundleId: 4648384
+bundleId: 4648675
 url: https://michaelbaumgartner.shinyapps.io/Macro_Analysis_App/
-when: 1622153227.40149
-lastSyncTime: 1622153227.40149
+when: 1622161220.50225
+lastSyncTime: 1622161220.50225
 asMultiple: FALSE
 asStatic: FALSE

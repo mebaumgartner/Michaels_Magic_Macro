@@ -2460,8 +2460,7 @@ server <- function(input, output) {
       
       #Normalize z-levels to starting z-plane
       wwda2[, grep(pattern = "^Single.Cell.Z.Level.Genotype.", colnames(wwda2))] <-
-        wwda2[, grep(pattern = "^Single.Cell.Z.Level.Genotype", colnames(wwda2))] - wwda2[, grep(pattern =
-                                                                                                   "^Starting.Z.Plane", colnames(wwda2))]
+        wwda2[, grep(pattern = "^Single.Cell.Z.Level.Genotype", colnames(wwda2))] - wwda2[, grep(pattern ="^Starting.Z.Plane", colnames(wwda2))]
       
       #Store these values for later use, and output data visually for user
       values$wwda2 <- wwda2
@@ -3458,12 +3457,15 @@ server <- function(input, output) {
   
   analysis <- observeEvent(input$columnsGo, {
     cols <- values$cols
+    
+    
+    #attempt to invert z-planes
     tryCatch({
+      
+      
       wwda2 <- values$wwda2
       wwda2$Image.Name <- sub(".tp.*", '', wwda2$Image.Name)
       cols2 <- input$columns2
-      
-      
       
       
       if (is.null(cols2) == FALSE) {
@@ -3476,8 +3478,10 @@ server <- function(input, output) {
                input$sepTimePoints == "Complete single cell analysis - timelapse"
              )
         )) {
+        
           removed[, grepl("Single.Cell.Z.Level" , names(removed))] <-
-            abs(removed[, grepl("Single.Cell.Z.Level" , names(removed))] - removed$Number.of.Z.Slices.Losers)
+            abs(removed[, grepl("Single.Cell.Z.Level" , names(removed))] - removed[,grepl("Number.of.Z.Slices", names(removed))])
+          
           
         } else{
           removed <-
@@ -3498,6 +3502,19 @@ server <- function(input, output) {
         sorted <- rbind(redux, removed)
         sorted <- sorted[order(sorted$Image.Name), ]
         values$wwda2 <- sorted
+        
+        output$contents <-
+          renderTable(
+            head(values$wwda2, 50)[, cols],
+            hover = TRUE,
+            border = TRUE,
+            spacing = "s",
+            digits = 5,
+            align = "l",
+            width = "auto"
+          )
+        
+          print ("Selected values inverted")
         
         
         
