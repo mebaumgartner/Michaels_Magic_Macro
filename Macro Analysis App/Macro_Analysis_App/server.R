@@ -2654,7 +2654,7 @@ server <- function(input, output) {
     output$regressionSummary <- renderPrint("")
     output$Rsquared <- renderPrint("")
     
-    tryCatch({
+    # tryCatch({
       # Attempt to run regression analysis
       nullVal <- input$regressionParameter1
       
@@ -3182,8 +3182,18 @@ server <- function(input, output) {
         
        
         #Here we run the linear regression analysis
+
         dependent <- logRegData[[nullVal]]
-        logRegDataSub$dependent <- dependent
+        if (typeof(logRegDataSub)== "list"){
+          print ("list")
+          logRegDataSub$dependent <- dependent
+        } else {
+          print ("not list")
+          logRegDataSub <- data.frame(cbind(dependent, logRegDataSub))
+          print (logRegDataSub)
+        }
+        
+     
         regression <-
           lm(dependent ~ .,  data = logRegDataSub, na.action = na.omit)
         
@@ -3376,12 +3386,12 @@ server <- function(input, output) {
       
       
       
-    },
-    # Unable to run regression
-    error = function(error_message) {
-      message("Unable to run regression")
-      return(NA)
-    })
+    # },
+    # # Unable to run regression
+    # error = function(error_message) {
+    #   message("Unable to run regression")
+    #   return(NA)
+    # })
     
   })
   
