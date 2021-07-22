@@ -183,45 +183,49 @@ def run_script():
 	pathMet = os.getcwd()
 	dirMet = os.path.join(pathMet, "jars", "Lib", "JSF_package")
 
-	dirBase = os.path.join(dirMet, "configBasic.py")
-	configuration = open (dirBase, 'r')
-	dataNew = configuration.read()
-	IJ.log(dataNew)
+	from inspect import getmembers
+	
 
+	dataNew = ""
+	varNames = [item for item in dir(configBasic) if not item.startswith("__")]
+	for item in getmembers(configCellTrack):
+		if item[0] in varNames:
+			dataNew = dataNew + str(item[0]) + "=" + str(item[1]) + "\n"
+
+	IJ.log(dataNew)
+	output2 = output2 + dataNew
+	
+
+	dataNew = ""
+	varNames = [item for item in dir(configCellTrack) if not item.startswith("__")]
+	for item in getmembers(configCellTrack):
+		if item[0] in varNames:
+			dataNew = dataNew + str(item[0]) + "=" + str(item[1]) + "\n"
+
+	IJ.log(dataNew)
 	output2 = output2 + dataNew
 
-	dirBase = os.path.join(dirMet, "configCellTrack.py")
-	configuration = open (dirBase, 'r')
-	dataNew = configuration.read()
-	IJ.log(dataNew)
 
+
+	dataNew = ""
+	varNames = [item for item in dir(configCloneSeg) if not item.startswith("__")]
+	for item in getmembers(configCellTrack):
+		if item[0] in varNames:
+			dataNew = dataNew + str(item[0]) + "=" + str(item[1]) + "\n"
+
+	IJ.log(dataNew)
 	output2 = output2 + dataNew
 
-	dirBase = os.path.join(dirMet, "configCloneSeg.py")
-	configuration = open (dirBase, 'r')
-	dataNew = configuration.read()
-	IJ.log(dataNew)
 
+	dataNew = ""
+	varNames = [item for item in dir(configDeathSeg) if not item.startswith("__")]
+	for item in getmembers(configCellTrack):
+		if item[0] in varNames:
+			dataNew = dataNew + str(item[0]) + "=" + str(item[1]) + "\n"
+
+	IJ.log(dataNew)
 	output2 = output2 + dataNew
 
-	dirBase = os.path.join(dirMet, "configDeathSeg.py")
-	configuration = open (dirBase, 'r')
-	dataNew = configuration.read()
-	IJ.log(dataNew)
-
-	output2 = output2 + dataNew
-
-	configuration = open (dirBase, 'r')
-	dataNew = configuration.read()
-	IJ.log(dataNew)
-
-	output2 = output2 + dataNew
-
-	configuration = open (dirBase, 'r')
-	dataNew = configuration.read()
-	IJ.log(dataNew)
-
-	output2 = output2 + dataNew
 
 	outFile2.write(output2)
 	outFile2.close()
@@ -236,7 +240,7 @@ def run_script():
 
 		#This try/except block covers if entire files throw an error
 		#To debug the script, comment out this try/except block along with the one corresponding to individual images
-		try:
+		#try:
 
 
 
@@ -300,7 +304,7 @@ def run_script():
 
 					#This try/except block covers individual images, in case they throw an error. If they do, we make a note of which images could not be processed
 					#For debugging, comment out this try/except block as well as the one for overall files
-					try:
+					#try:
 
 						IJ.log("Analysis started on image: "+str(indices))
 
@@ -1187,24 +1191,24 @@ def run_script():
 								IJ.saveAs(impTL, "Tiff", path)
 
 
-					except:
-						try:
-							Title = str(Title)
-						except:
-							Title = "No Title"
-						Title = str(Title)
-						if Title.endswith(".txt"):
-							IJ.log("text file skipped: "+ Title)
-						elif Title.endswith(".zip"):
-							IJ.log("zip file skipped: "+ Title)
-						elif Title.endswith(".py"):
-							IJ.log("python file skipped: "+ Title)
-						elif Title.endswith(".model"):
-							IJ.log("weka model file skipped: "+ Title)
-						else:
-							errCount = errCount + 1
-							errStr = errStr + "[image:" + Title +"]"
-						continue
+#					except:
+#						try:
+#							Title = str(Title)
+#						except:
+#							Title = "No Title"
+#						Title = str(Title)
+#						if Title.endswith(".txt"):
+#							IJ.log("text file skipped: "+ Title)
+#						elif Title.endswith(".zip"):
+#							IJ.log("zip file skipped: "+ Title)
+#						elif Title.endswith(".py"):
+#							IJ.log("python file skipped: "+ Title)
+#						elif Title.endswith(".model"):
+#							IJ.log("weka model file skipped: "+ Title)
+#						else:
+#							errCount = errCount + 1
+#							errStr = errStr + "[image:" + Title +"]"
+#						continue
 
 			else:
 				continue
@@ -1259,25 +1263,25 @@ def run_script():
 				IJ.log("Final batch of results saved")
 
 
-		except:
-
-			try:
-				Title = str(Title)
-			except:
-				Title = "No Title"
-			if Title.endswith(".txt"):
-				IJ.log("text file skipped: "+ Title)
-			elif Title.endswith(".zip"):
-				IJ.log("zip file skipped: "+ Title)
-			elif Title.endswith(".py"):
-				IJ.log("python file skipped: "+ Title)
-			elif Title.endswith(".model"):
-				IJ.log("weka model file skipped: "+ Title)
-			continue
-
-		# show display panel if prompted
-		if JSF_package.configSave.visualize == 1 and generateImage == True:
-			impVis.show()
+#		except:
+#
+#			try:
+#				Title = str(Title)
+#			except:
+#				Title = "No Title"
+#			if Title.endswith(".txt"):
+#				IJ.log("text file skipped: "+ Title)
+#			elif Title.endswith(".zip"):
+#				IJ.log("zip file skipped: "+ Title)
+#			elif Title.endswith(".py"):
+#				IJ.log("python file skipped: "+ Title)
+#			elif Title.endswith(".model"):
+#				IJ.log("weka model file skipped: "+ Title)
+#			continue
+#
+#		# show display panel if prompted
+#		if JSF_package.configSave.visualize == 1 and generateImage == True:
+#			impVis.show()
 
 
 	#Here, we abort the analysis if there are no good images in the specified folder for analysis

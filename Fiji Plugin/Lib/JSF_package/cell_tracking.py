@@ -90,8 +90,10 @@ def cell_tracking(cellROIs, IDs, stackno, Roido, rm, iHeight, rt, IDs5, DAPIfilt
 		regionalMinima = MinimaAndMaxima.extendedMinima( ccImp.getProcessor(), morphoSeg, 4 )
 		imposedMinima = MinimaAndMaxima.imposeMinima(ccImp.getProcessor(), regionalMinima, 4)
 		labeledMinima = BinaryImages.componentsLabeling( regionalMinima, 4, 32 )
-		ip_segmented = Watershed.computeWatershed( imposedMinima, labeledMinima, 4, True )
+		ip_segmented = Watershed.computeWatershed( imposedMinima, labeledMinima, None, 4, True)
 		ccImp = ImagePlus("imp_MorphSegmented",ip_segmented)	
+
+	
 	
 		#This function gives our an image with the segmented regions, but its in a weird format, so we play around with it until we have a nice 8-bit binary image
 		IJ.run(ccImp, "8-bit", "")
