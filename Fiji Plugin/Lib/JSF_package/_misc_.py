@@ -13,22 +13,27 @@ def mask_confirmer(a, b):
 	from ij import IJ
 	from ij.measure import ResultsTable
 
-
+	print 1
 	#Create an ROI in a blank region of the image (created by resizing the canvas)
 	IJ.run("Clear Results")
 	b.setRoi(1, a, 1, 1)
-
+	print 2
+	
 	#Measure the area and get the maximum pixel value
+	print 3
 	IJ.run(b, "Measure", "")
 	IJ.run(b, "Select None", "")
 	rt = ResultsTable.getResultsTable()
 	peepers = rt.getStringValue("Max",0)
 	IJ.run("Clear Results")
+	print 4
 
 
 	#Since this is a binary image with known parameters, if the Max value is 255, the image needs to be inverted
 	if float(peepers)==255:
 		IJ.run(b, "Invert", "")
+
+	print 5
 
 
 ###############

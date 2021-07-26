@@ -35,7 +35,7 @@
 
 def run_script():
 
-
+	print ("Script launched")
 	#Default imageJ and pyton imports that should all be installed with you basic FIJI
 	from java.awt import Color, Rectangle
 	from ij import IJ, WindowManager, ImagePlus
@@ -46,6 +46,9 @@ def run_script():
 	from ij.gui import ShapeRoi
 	from random import randrange
 	from ij.plugin import ZProjector, Concatenator
+
+	from JSF_package import Initialize
+	Initialize.initializer()
 
 	############################################
 	# First, we close any excess open windows and reset the ROI manager
@@ -96,9 +99,9 @@ def run_script():
 	from JSF_package.configBasic import singleCellMethod, dcp1Counting, dcp1Deluxe, cellCountDeluxe, restoreROI, cellDeathSegMethod, zMethod
 	from JSF_package.configSave import generateImage, csvSaver
 	import JSF_package
-	from JSF_package import _misc_, caspase_analysis, cell_tracking, clone_analysis, configBasic, configCellTrack, configCloneSeg, configDeathSeg, configDeathTrack, configRoi, configSave, seeded_region_growing, speckles_analysis, start_up, tracking_and_outputs, user_inputs_GUI
+	from JSF_package import  _misc_, caspase_analysis, cell_tracking, clone_analysis, configBasic, configCellTrack, configCloneSeg, configDeathSeg, configDeathTrack, configRoi, configSave, seeded_region_growing, speckles_analysis, start_up, tracking_and_outputs, user_inputs_GUI
 	from JSF_package._misc_ import mask_confirmer, channel_open, selection_confirmer, channel_organize_and_open, decode_channels
-
+	
 	# the variable 'deluxeCell' determines whether or not we launch the detailed single cell analysis (i.e. z-position, distance to border, etc.).
 	# True means 'yes, run the fancy single cell analysis'
 	if (dcp1Deluxe == True and dcp1Counting == True and cellDeathSegMethod != "Disabled") or (cellCountDeluxe == True and singleCellMethod != "Disabled"):
@@ -238,12 +241,14 @@ def run_script():
 	#####################################   Loop each file in the specified folder one-by-one for analysis       #####################################################
 	for names in filelist:
 
+		
+
 		#This try/except block covers if entire files throw an error
 		#To debug the script, comment out this try/except block along with the one corresponding to individual images
-		#try:
+		try:
 
 
-
+			print ("New file selected")
 			csvCount = 1 #This variable tracks how many .csv files we have put out and is used to number the files. We save and restart each analysis table (other than the summary table) after each ten discs. This helps prevent running out of memory
 			goodImage = 0 #This variable tracks the number of images successfully analyzed. This tells the macro when to save csv files.
 			rtD = ResultsTable() #This is the whole disc analysis table variable
@@ -299,14 +304,15 @@ def run_script():
 				#####################################   Loop through all images in the file        #####################################################
 				for indices in lifVariable:
 
-
+					
 
 
 					#This try/except block covers individual images, in case they throw an error. If they do, we make a note of which images could not be processed
 					#For debugging, comment out this try/except block as well as the one for overall files
-					#try:
+					try:
 
 						IJ.log("Analysis started on image: "+str(indices))
+						print("Analysis started on image: "+str(indices))
 
 						#Reset the ROI manager by deleting all ROIs other than the user-specified ones
 						currentNumRois = rm.getCount()
@@ -335,6 +341,8 @@ def run_script():
 
 						#This loop runs through each timepoint of the image. If the image is not a timelapse, it just runs once.
 						while timepoint <= timeFinish:
+
+							print ("Timeloop initiated")
 
 							#Set the starting and ending Z-slices from user input
 							#startEndSlice holds the starting and ending z-planes specified by the users
@@ -664,6 +672,8 @@ def run_script():
 							#####################################   Here we start a loop through each desired z-slice of the stack and begin our analysis         #####################################################
 							while stackno <= stackend:
 
+								print ("Next z-plane selected")
+
 								IJ.log("Z-plane "+str(stackno)+" of "+str(stackend)+" started")
 
 								#Aborts if user presses escape
@@ -816,8 +826,10 @@ def run_script():
 
 								#Run clone analysis. For a full accounting of these variables, see the clone_analysis function in the clone_analysis.py file
 								#Roido is the composite clones ROI for a given z plane for use in single cell tracking
+								print ("Starting clone analysis")
 								Title, genotypesImpArray, noClones, caliber, sliceROIs, borderArray, cloneMask, borderMask, cloneImp, cloneBorderImp, Roido, genotypeNames, fullCloneROIArray = JSF_package.clone_analysis.clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceROIs, borderArray, IDs3, cellROIs, numGenotypes, timepoint, colorArray, seedIDclone, segmentedIDs, genotypeNames, roiMask, iWidth, deluxeCell, fullCloneROIArray)
-
+								print ("Clone analysis run")
+								
 								#Store all the images we created for the output panel in arrays
 								cloneMaskArray.extend([cloneImp.duplicate()])
 								borderMaskArray.extend([borderMask])
@@ -838,7 +850,7 @@ def run_script():
 								if JSF_package.configBasic.cloneTracking == 1 and noClones == 0:
 
 									IJ.log("Clone segmentation initiated")
-
+									print("Clone segmentation initiated")
 									#cloneROIs is just a two dimensional list containing the indices of all the segmented single clone ROIs that have been added to the ROI manager.
 									#It takes the format of [ [indices of all individual ROIs at one Z-level], [inidices of all the individual ROIs at the next Z-level], [etc.] ]
 									cloneROIs, rm = JSF_package.clone_analysis.clone_segmentor(genotypesImpArray, rm, Title, numImages, stackno, pouch, caliber, cloneROIs, timepoint, excludinator)
@@ -853,7 +865,8 @@ def run_script():
 										IJ.run(cloneTrackingImp, "Draw", "")
 
 									IJ.log("Clone segmentation completed successfully")
-
+									print("Clone segmentation completed successfully")
+									
 									#Add headers/legend to output image
 									cloneTrackingImp.getProcessor().drawString("Clones are color coded, fill = border, outline = center",20, 20, Color.blue)
 									if JSF_package.configBasic.dcp1Choice == 1:
@@ -867,27 +880,33 @@ def run_script():
 
 									#cellROIs takes the exact same format as cloneROIs, only it has the indices corresponding to the centroids of single cell segmented ROIs
 									IJ.log("Single-cell segmentation initiated")
-
+									print("Single-cell segmentation initiated")
+									
 									cellROIs = JSF_package.cell_tracking.cell_tracking(cellROIs, IDs, stackno, Roido, rm, iHeight, rt, IDs5, DAPIfilter, seedIDcell, pouch, excludinator, segmentedIDsCC)
 
 									IJ.log("Single-cell segmentation completed successfully")
+									print("Single-cell segmentation completed successfully")
 
 								#Run the foci analysis if prompted by user, and store the images
 								if JSF_package.configBasic.dcp1Choice == 1:
 
 									IJ.log("Apoptosis analysis initiated")
+									print("Apoptosis analysis initiated")
 
 									sliceROIs, casMask, casImp, casCasImp, casRefArray = JSF_package.caspase_analysis.dcp1_analysis(pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefArray, numGenotypes, timepoint, caspaseSegment, excludinator, seedIDcas, segmentedIDs2, iWidth)
 									casMaskArray.extend([casMask])
 									casImpArray.extend([casImp])
 									casCasArray.extend([casCasImp])
+									
 									IJ.log("Apoptosis analysis completed successfully")
+									print("Apoptosis analysis completed successfully")
 
 
 								#Run the speckle analysis, store the images
 								if JSF_package.configBasic.speckle == 1:
 
 									IJ.log("Speckle analysis initiated")
+									print("Speckle analysis initiated")
 
 									#For a full accounting of these variables, see the speckleAnalysis function in the speckles_analysis.py file
 									refOutImp, refStandImp, sliceROIs = JSF_package.speckles_analysis.speckleAnalysis(IDs4, stackno, iHeight, rm, sliceROIs, pouch, timepoint, numGenotypes, excludinator)
@@ -898,6 +917,7 @@ def run_script():
 									refStandArray.extend([refoImp])
 
 									IJ.log("Speckle analysis completed successfully")
+									print("Speckle analysis completed successfully")
 
 
 								#Quit the script if the user has pressed escape at any point in the loop
@@ -923,6 +943,7 @@ def run_script():
 								#We convert this into totalCaspaseAssignments, which is now another 2D array of the format [ [ Indices of all rois in the manager corresponding to an individual caspase foci ], [ next caspase foci ] ]
 
 								IJ.log("Foci tracking initiated")
+								print("Foci tracking initiated")
 
 								genCounter = 1
 								caspaseSegment = [caspaseSegment]
@@ -942,6 +963,7 @@ def run_script():
 
 
 								IJ.log("Foci tracking completed successfully")
+								print("Foci tracking completed successfully")
 
 
 							else:
@@ -951,12 +973,14 @@ def run_script():
 							if JSF_package.configBasic.cloneTracking == 1:
 
 								IJ.log("Clone tracking initiated")
+								print("Clone tracking initiated")
 
 								#totalCloneAssignments is an array like totalCaspaseAssignments
 								supersetCloneAssignments = JSF_package.tracking_and_outputs.tracker(cloneROIs, rm, 1)
 								trackingArray.extend([supersetCloneAssignments])
 
 								IJ.log("Clone tracking completed successfully")
+								print("Clone tracking completed successfully")
 
 							else:
 								trackingArray.extend(["Skip"])
@@ -964,6 +988,7 @@ def run_script():
 							if JSF_package.configBasic.cellCount == 1:
 
 								IJ.log("Single-cell tracking initiated")
+								print("Single-cell tracking initiated")
 
 								#totalCellAssignments is an array like totalCaspaseAssignments
 								cellROIs = [cellROIs]
@@ -976,6 +1001,7 @@ def run_script():
 								trackingArray.extend([totalCellAssignments])
 
 								IJ.log("Single-cell tracking completed successfully")
+								print("Single-cell tracking completed successfully")
 
 							else:
 								trackingArray.extend(["Skip"])
@@ -986,12 +1012,16 @@ def run_script():
 							iHeight = iHeightArchive
 
 							IJ.log("Whole disc measurements initiated")
+							print("Whole disc measurements initiated")
 							LoLa, LoLb = JSF_package.tracking_and_outputs.whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArray, casMaskArray, refStandArray, refOutArray, rm, rt, iHeight, zStart, names, Title, pouchArray, pouch2Array, colorArray, genotypeNames, excludinator, iWidth, IDs4)
 							IJ.log("Whole disc measurements completed successfully. Tracking measurements initiated")
+							print("Whole disc measurements completed successfully. Tracking measurements initiated")
 							outImp, outClImp, cloneMaskStack, cloneLoLa, cloneLoLb, LoLc, rtDeluxe, outImpSC = JSF_package.tracking_and_outputs.tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray, iHeight, numGenotypes, borderArray, rm, zStart, cloneTrackingArray, names, Title, rt, pouchHeight, casRefArray, cloneImpArray, colorArray, pouchArray, pouch2Array, genotypeNames, pouch, excludinator, iWidth, timepoint, rtDeluxe, deluxeCell, fullCloneROIArray)
 							IJ.log("Tracking measurements completed successfully. Whole disc results table generation initiated")
+							print("Tracking measurements completed successfully. Whole disc results table generation initiated")
 							rtD = JSF_package.tracking_and_outputs.create_whole_disc_table(rtD, LoLa, LoLb, LoLc, timepoint)
 							IJ.log("Whole disc results table generation completed successfully")
+							print("Whole disc results table generation completed successfully")
 							rtD.show("Disc Analysis")
 							rtS = JSF_package.tracking_and_outputs.create_summary_table(rtS, LoLa, LoLb, LoLc, timepoint)
 
@@ -1001,20 +1031,24 @@ def run_script():
 
 
 							IJ.log("Whole disc results table generation completed successfully")
+							print("Whole disc results table generation completed successfully")
 							rtS.show("Summary Table")
 							if JSF_package.configBasic.cloneTracking == 1:
 								IJ.log("Clone tracking results table generation initiated")
+								print("Clone tracking results table generation initiated")
 								rtC = JSF_package.tracking_and_outputs.create_clone_table(rtC, cloneLoLa, cloneLoLb, timepoint)
 								rtC.show("Clone Analysis")
 
 								#Flush big variables
 								cloneLoLa = cloneLoLb = None
 								IJ.log("Clone tracking results table generation completed successfully")
+								print("Clone tracking results table generation completed successfully")
 							timepoint = timepoint + 1
 
 
 							#make our composite image
 							IJ.log("Composite output image generation initiated")
+							print("Composite output image generation initiated")
 							#imp is just the imagePlus of our display panel
 							if generateImage == True:
 								imp = JSF_package.tracking_and_outputs.image_generator(cloneMaskStack, borderMaskArray, casMaskArray, cloneImpArray, fluoImpArray, casImpArray, iHeight, casCasArray, cloneBorderArray, cloneTrackingArray, outImp, outClImp, refBaseArray, refOutArray, refStandArray, iWidth, outImpSC, deluxeCell, calibration)
@@ -1025,6 +1059,7 @@ def run_script():
 									timeLapseImageArray.extend([imp])
 
 								IJ.log("Composite output image generation completed successfully")
+								print("Composite output image generation completed successfully")
 
 							#Flush image stacks now that they've been used
 							cloneMaskStack = borderMaskArray = casMaskArray = cloneImpArray = fluoImpArray = casImpArray = casCasArray = cloneBorderArray = cloneTrackingArray = outImp = outClImp = refBaseArray = refOutArray = refStandArray = None
@@ -1155,6 +1190,7 @@ def run_script():
 								IJ.run("Close")
 								csvCount = csvCount + 1
 								IJ.log("Batch of results from Z-stacks saved")
+								print("Batch of results from Z-stacks saved")
 								isSaved = True
 
 							selections = 1
@@ -1171,6 +1207,7 @@ def run_script():
 						if JSF_package.configSave.saveChoice == 1 and JSF_package.configBasic.timelapse == True and generateImage == True:
 
 							IJ.log("Timelapse composite image generation started")
+							print("Timelapse composite image generation started")
 
 							#Combine all images in time-lapse into one 4d stack
 							impTL = timeLapseImageArray[0]
@@ -1182,6 +1219,7 @@ def run_script():
 								idex += 1
 
 							IJ.log("Timelapse composite image generation completed successfully")
+							print("Timelapse composite image generation completed successfully")
 
 							if int(JSF_package.configSave.imageSampler) > 1:
 								if (int(goodImage) % int(JSF_package.configSave.imageSampler)) == 0:
@@ -1191,24 +1229,24 @@ def run_script():
 								IJ.saveAs(impTL, "Tiff", path)
 
 
-#					except:
-#						try:
-#							Title = str(Title)
-#						except:
-#							Title = "No Title"
-#						Title = str(Title)
-#						if Title.endswith(".txt"):
-#							IJ.log("text file skipped: "+ Title)
-#						elif Title.endswith(".zip"):
-#							IJ.log("zip file skipped: "+ Title)
-#						elif Title.endswith(".py"):
-#							IJ.log("python file skipped: "+ Title)
-#						elif Title.endswith(".model"):
-#							IJ.log("weka model file skipped: "+ Title)
-#						else:
-#							errCount = errCount + 1
-#							errStr = errStr + "[image:" + Title +"]"
-#						continue
+					except:
+						try:
+							Title = str(Title)
+						except:
+							Title = "No Title"
+						Title = str(Title)
+						if Title.endswith(".txt"):
+							IJ.log("text file skipped: "+ Title)
+						elif Title.endswith(".zip"):
+							IJ.log("zip file skipped: "+ Title)
+						elif Title.endswith(".py"):
+							IJ.log("python file skipped: "+ Title)
+						elif Title.endswith(".model"):
+							IJ.log("weka model file skipped: "+ Title)
+						else:
+							errCount = errCount + 1
+							errStr = errStr + "[image:" + Title +"]"
+						continue
 
 			else:
 				continue
@@ -1261,27 +1299,28 @@ def run_script():
 
 
 				IJ.log("Final batch of results saved")
+				print("Final batch of results saved")
 
 
-#		except:
-#
-#			try:
-#				Title = str(Title)
-#			except:
-#				Title = "No Title"
-#			if Title.endswith(".txt"):
-#				IJ.log("text file skipped: "+ Title)
-#			elif Title.endswith(".zip"):
-#				IJ.log("zip file skipped: "+ Title)
-#			elif Title.endswith(".py"):
-#				IJ.log("python file skipped: "+ Title)
-#			elif Title.endswith(".model"):
-#				IJ.log("weka model file skipped: "+ Title)
-#			continue
-#
-#		# show display panel if prompted
-#		if JSF_package.configSave.visualize == 1 and generateImage == True:
-#			impVis.show()
+		except:
+
+			try:
+				Title = str(Title)
+			except:
+				Title = "No Title"
+			if Title.endswith(".txt"):
+				IJ.log("text file skipped: "+ Title)
+			elif Title.endswith(".zip"):
+				IJ.log("zip file skipped: "+ Title)
+			elif Title.endswith(".py"):
+				IJ.log("python file skipped: "+ Title)
+			elif Title.endswith(".model"):
+				IJ.log("weka model file skipped: "+ Title)
+			continue
+
+		# show display panel if prompted
+		if JSF_package.configSave.visualize == 1 and generateImage == True:
+			impVis.show()
 
 
 	#Here, we abort the analysis if there are no good images in the specified folder for analysis

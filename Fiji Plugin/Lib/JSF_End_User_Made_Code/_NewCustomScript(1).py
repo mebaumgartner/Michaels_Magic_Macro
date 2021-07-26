@@ -48,12 +48,59 @@ def main(imp, stack, rm, stackno, pouchROI, pouchROI2):
 	#****************** Write your code here! *********************#
 	################################################################
 
-	from ij import IJ
+	
+	#This is sample code you can delete. This is what loaded this file and displayed the images
 
-	IJ.run(imp, "Convert to Mask", "")
-	IJ.run(imp, "Divide...", "value=255")
+	#Display our 'imp' variable
+	imp.setTitle("imp")
+	imp.show()
 
-	outImp = imp
+	#Set the pouchROI to 'imp', if it exists
+	print pouchROI
+	if pouchROI != 0:
+		imp.setRoi(pouchROI)
+
+	#Display our 'stack' variable
+	stack.setTitle("stack")
+	stack.show()
+
+	#Set the pouchROI2 to 'stack', if the pouchROI2 exists
+	if pouchROI2 != 0:
+		stack.setRoi(pouchROI2)
+
+	#Here, we are copying a this template and writing it to a new file.
+	#We then open this new file in the text editor, and now you can work on it without overwriting my beautiful template.
+	
+	#here we import some modules
+	from ij import IJ #If you're new to jython programming, you're almost always gonna want to import IJ. It allows you to access all of ImageJ's plugins
+	import os #os is useful for file manipulation
+	from shutil import copy #This is copy/paste utility for files
+
+	#You cannot just type out the file directory, as python does not like those. Instead, we use the path.join() function to create a directory
+	# os.getcwd() gets the current working directory. For FIJI, this defaults to the Fiji.app folder.
+	templatePath = os.path.join(os.getcwd(),"jars","Lib","JSF_End_User_Made_Code","_Template.py")
+	destPath = os.path.join(os.getcwd(),"jars","Lib","JSF_End_User_Made_Code","_NewCustomScript.py")
+
+	#We make sure that there isn't already a file called '_NewCustomScript.py' in the 'JSF_End_User_Made_Code' file. 
+	pathCount = 1
+	start = True
+	while start == True:
+		if os.path.isfile(destPath):
+			destPath = os.path.join(os.getcwd(),"jars","Lib","JSF_End_User_Made_Code","_NewCustomScript("+str(pathCount)+").py")
+			pathCount +=1
+		else:
+			start = False
+
+	copy(templatePath, destPath)
+
+	#This is an example of why importing IJ is so useful. You can run almost any IJ commands with it.
+	#If you can't figure out how to do something, just launch the 'Recorder' from from the 'Plugins>Macros>Record...' menu option. 
+	#Set the 'Record:' option to Java, and do what you need to do. The recorder will convert your actions to Java code, which can be readily run in Jython. The trailing ';' isn't needed though
+	temp = IJ.open(destPath)
+
+	#Print a message to let the user know what's up
+	IJ.error("The template for making a new jython script is now open in the text editor! The instructions are in the comments: The images displayed in front of you are the variables 'imp' and 'stack.'")
+	exit()
 
 	
 	################################################################
@@ -63,4 +110,3 @@ def main(imp, stack, rm, stackno, pouchROI, pouchROI2):
 
 	#Here we return our outImp. This line can't be removed
 	return outImp
-	

@@ -840,7 +840,7 @@ def create_whole_disc_table(rtD, LoLa, LoLb, LoLc, timepoint):
 				subItems = item[1:]
 				for sub in subItems:
 
-					print (sub)
+				
 
 					if len(sub) > 1:
 						genotype = sub[0]
