@@ -142,7 +142,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 	from JSF_package.configBasic import cloneChannel, fluoChannel, dcp1Choice, fluoChoice, speckle, speckleMethod, dcp1Counting, singleCellMethod
 	import JSF_package
 	from JSF_package import _misc_, caspase_analysis, cell_tracking, clone_analysis, configBasic, configCellTrack, configCloneSeg, configDeathSeg, configDeathTrack, configRoi, configSave, seeded_region_growing, speckles_analysis, start_up, tracking_and_outputs, user_inputs_GUI
-
+	import time
 
 
 	from random import randrange
@@ -244,7 +244,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 
 		activeGenotype += 1
 
-
+	print "Table measurements initialized"
 	if JSF_package.configRoi.halfHalfNC == True and (JSF_package.configBasic.cloneSeg != "Membrane-tagged GFP" and JSF_package.configBasic.cloneSeg != "Cytosolic GFP" and JSF_package.configBasic.cloneSeg != "Use ROIs As Clones"):
 		numGenotypes = numGenotypes/2
 
@@ -265,9 +265,11 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			from JSF_End_User_Made_Code._executor import user_made_code
 			imp = user_made_code(JSF_package.configBasic.preProcess, imp, IDs3, rm, zStart, pouch, excludinator)
 
-
+	print "IDs selected
+	
 	IJ.run(imp, "Canvas Size...", "width="+str(iWidth)+" height="+str(iHeight+100)+" position=Top-Left zero")
 
+	print "Canvas resized"
 
 	#We use the sliceROIs variable we've been using to track whole disc analysis ROI indexes to extract all the relevant ROIs as an array.
 	rm.setSelectedIndexes(sliceROIs)
@@ -282,6 +284,8 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 	activeGenotype = 0
 
 	indexCount = 0 #this index counts the number of times we have run through this loop
+
+	print "Looping through disc ROIs"
 	for activeRoi in roiArray:
 
 		#We extract the Roi title from the active ROI
@@ -300,7 +304,8 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 		zLevelRef = int(zLevelRef[startIndex+3:zEnd])
 		zEnd = zEndArchive
 
-
+		print "ROI classified"
+		
 		#Here we extract the genotype of the ROI from the ROI name
 		ROIgenotype = roiName.find("genotype")
 		endIndex = roiName.find("_timepoint")
@@ -311,12 +316,15 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 		imp.setSlice(zLevelRef)
 		imp.setRoi(activeRoi)
 
+		print "ROI applied to correct z level"
+		
 		if speckle==True and speckleMethod != "Count":
 			impSpeckle.setSlice(zLevelRef)
 			impSpeckle.setRoi(activeRoi)
 
 		#Here we run our measurements on the image. The measurements are all now in the measurements table
 		IJ.run("Clear Results")
+		time.sleep(0.0001)
 		IJ.run(imp, "Measure", "")
 
 		#Ma is the measured area and Mf is the measured fluorescence
@@ -327,12 +335,14 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			IJ.run(impSpeckle, "Measure", "")
 			MfS = rt.getValue("IntDen", 1)
 
-
+		print "Measurements obtained"
 
 		#If we determined that the ROI is empty, we set Ma and Mf to zero
 		if zEnd != -1:
 			Ma = 0
 			Mf = 0
+
+		print "Empty ROI accounted for"
 
 		#We select the relevant dcp1 masks from the image arrays. we are going to draw interesting ROIs on it for the output image
 		if dcp1Choice == 1:
@@ -341,10 +351,14 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			casMaskImp = casMaskArray[zLevelRef - zStart]
 			casMaskImp.setRoi(activeRoi)
 
+		print "caspase ROIs applied"
+
 		#We select the relevant speckle analysis image from the image array. We are going to draw interesting ROIs on it for the output image
 		if speckle == 1:
 			speckleMaskImp = refStandArray[zLevelRef - zStart]
 			speckleOverlayImp = refOutArray[zLevelRef - zStart]
+
+		print "Speckle ROIs applied"
 
 		#We now check the name of the ROI to determine what it is we just measured. We then add these values to the array that tracks our output data
 
@@ -371,18 +385,21 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				IJ.run(casMaskImp, "Draw", "")
 				casCasImp.getProcessor().drawString("Clone Center", 10, 120, Color.black)
 
-
+		print "Center ROI evaluated"
 		#Again for the border
 		if roiName.startswith("Border_") == True:
 
 			borderAreaList[ROIgenotype] = borderAreaList[ROIgenotype] + [Ma]
 			borderFluoList[ROIgenotype] = borderFluoList[ROIgenotype] + [Mf]
 
+		print "Border ROI evaluated"
 		#Again for the non-clones area
 		if "Not_Clones_" in roiName and ROIgenotype == 1:
 
 			notClonesFluoList = notClonesFluoList + [Mf]
 			notClonesAreaList = notClonesAreaList + [Ma]
+
+		print "Non-clones ROI evaluated"
 
 		#Now we start measuring for the caspase areas. We are not interested in the fluorescence for these ROIs, so we just measure area.
 		#We also draw the ROIs to the output image, depending on the ROI
@@ -400,7 +417,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				IJ.run("Line Width...", "line=2")
 				IJ.run(casCasImp, "Draw", "")
 
-
+		print "Caspase area measured"
 		#Caspase area in the clones
 		if "CaspaseClones" in roiName:
 
@@ -420,6 +437,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				IJ.run(casCasImp, "Draw", "")
 				casCasImp.getProcessor().drawString("Caspase in Clones", 10, 40, Color.black)
 
+		print "Caspase clones measured" 
 		#Caspase area in the clones
 		if "CaspaseCenter" in roiName:
 
@@ -430,6 +448,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				IJ.run(casCasImp, "Fill", "")
 				casCasImp.getProcessor().drawString("Center", 10, 60, Color.black)
 
+		print "Caspase center measured"
 		#Caspase in the border
 		if "CaspaseBorder" in roiName:
 
@@ -439,6 +458,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				IJ.run(casCasImp, "Fill", "")
 				casCasImp.getProcessor().drawString("Border", 10, 80, Color.black)
 
+		print "Caspase border measured
 		#Caspase in the non-competing region
 		if "CaspaseNotClones" in roiName and ROIgenotype == 1:
 			notClonesCasList = notClonesCasList + [Ma]
@@ -448,6 +468,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				casCasImp.setColor(Color.cyan)
 				IJ.run(casCasImp, "Fill", "")
 
+		print "Caspase not clones measured"
 		#Now we do the speckles measurements
 		if "SpecklesClones" in roiName:
 
@@ -487,7 +508,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 
 
 
-
+		print "Speckles clones measured"
 		if "SpecklesCenter" in roiName:
 
 			#Add speckle fluorescence and area, if prompted by the user
@@ -528,6 +549,8 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			speckleOverlayImp.setColor(Color.blue)
 			speckleOverlayImp.getProcessor().drawString("Clone Center", 10, 40, Color.black)
 
+		print "Speckles center measured"
+		
 		if "SpecklesBorder" in roiName:
 
 			#Add speckle fluorescence and area, if prompted by the user
@@ -568,6 +591,9 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			IJ.setForegroundColor(255,0,0)
 			speckleOverlayImp.setColor(Color.red)
 			speckleOverlayImp.getProcessor().drawString("Clone Border", 10, 60, Color.black)
+		
+		print "Speckles border measured
+		
 		if "SpecklesNotClones" in roiName:
 
 			#Add speckle fluorescence and area, if prompted by the user
@@ -609,7 +635,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			speckleOverlayImp.getProcessor().drawString("Not Clones", 10, 80, Color.black)
 
 
-
+		print "Not clones speckles measured"
 		if roiName.startswith("Clones_") == True:
 
 			cloneAreaList[ROIgenotype] = cloneAreaList[ROIgenotype] + [Ma]
@@ -649,6 +675,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 				IJ.run(speckleMaskImp, "Draw", "")
 				IJ.run(speckleOverlayImp, "Draw", "")
 
+			print "Clones drawn onto output image"
 
 
 		if zLevelRef > zlevelActive:
@@ -693,6 +720,8 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 
 	#We make our output table starting here. First thing we do is get all the file names, image names, zLevels, and the pouch area, and put them in arrays
 
+	print "Generating output table"
+	
 	numMeasurements = len(notClonesAreaList)
 	loopCounterT = 0
 	while loopCounterT < numMeasurements:
@@ -705,6 +734,8 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 
 		loopCounterT += 1
 
+
+	print "Populating output table"
 	#We make two lists in which we store all the lists of measurements we have made - these are stored in variables LoLa (list of lists a) and LoLb (list of lists b).
 	#LoLa holds all the measurements that don't depend on genotype. LoLb holds all the measurements that do depend on genotype
 	LoLa = [fileNamesArray, imageNamesArray, zLevelArray, notClonesAreaList ]

@@ -48,22 +48,29 @@ def caspase_segmentor (cal, imp, rm, Title, stackno, pouch, caspaseSegment, dcp1
 
 	y = 0
 	newCasRois= list()
-
+	import time
 	while 1 <= Max:
 
-
+		time.sleep(0.0001)
 		print "Caspase segmentor initiated"
-
+		
 		IJ.run("Clear Results")
+		print 1
 		IJ.run(imp, "Select None", "")
+		print 2
 		IJ.run(imp, "Measure", "")
+		print 3
 		Max = rt.getValue("Max", 0)
+		print 4
 
 		if Max == 0:
 			break
-
+			print 5
+		
+		print "Duplicating caspase masks"
 		imp2 = imp.duplicate()
 
+		print "Applying threshold
 		imp2.getProcessor().setThreshold(Max, Max, 0)
 
 		print "Converting to mask"
@@ -71,7 +78,12 @@ def caspase_segmentor (cal, imp, rm, Title, stackno, pouch, caspaseSegment, dcp1
 
 		IJ.run(imp2,"Convert to Mask", "")
 
+		print "Resizing canvas"
+
 		IJ.run(imp2, "Canvas Size...", "width="+str(imp2.getWidth())+" height="+str(iHeight+100)+" position=Top-Left zero")
+
+		print "Canvas resized"
+
 
 		mask_confirmer(iHeight + 20, imp2)
 
