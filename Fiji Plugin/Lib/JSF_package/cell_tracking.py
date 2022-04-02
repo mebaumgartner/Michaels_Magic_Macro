@@ -109,7 +109,7 @@ def cell_tracking(cellROIs, IDs, stackno, Roido, rm, iHeight, rt, IDs5, DAPIfilt
 		if JSF_package.configBasic.singleCellMethod.endswith(".model"):
 		
 			
-			if JSF_package.configBasic.cloneSeg.find("_3D_.") == -1:
+			if JSF_package.configBasic.singleCellMethod.find("_3D_.") == -1:
 			
 				from trainableSegmentation import WekaSegmentation
 				segmentator = WekaSegmentation( ccImp )
