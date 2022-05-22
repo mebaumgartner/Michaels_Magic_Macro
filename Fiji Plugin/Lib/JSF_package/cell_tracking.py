@@ -7,13 +7,13 @@
 #
 
 
-def cell_tracking(cellROIs, IDs, stackno, Roido, rm, iHeight, rt, IDs5, DAPIfilter, seedIDcell, pouch, excludinator, segmentedIDsCC):
+def cell_tracking(cellROIs, IDs, stackno, Roido, rm, iHeight, rt, IDs5, DAPIfilter, seedIDcell, pouch, excludinator, segmentedIDsCC, wekaSkipImage):
 #c filterWeight customSegmentationCells ):
 
-	from JSF_package.configCellTrack import minCellSize, cellCountRadius, morphoSeg, filterWeight, seedChoiceCell, seedChannelCell
+	from JSF_package.configCellTrack import minCellSize, cellCountRadius, morphoSeg, filterWeight, seedChoiceCell, seedChannelCell, maxCellSize, minCircularity, maxCircularity
 	import JSF_package
 	from JSF_package import _misc_, caspase_analysis, cell_tracking, clone_analysis, configBasic, configCellTrack, configCloneSeg, configDeathSeg, configDeathTrack, configRoi, configSave, seeded_region_growing, speckles_analysis, start_up, tracking_and_outputs, user_inputs_GUI
-	
+	from JSF_package.configBasic import cloneSeg, singleCellMethod, cloneChannel, cellCountChannel
 	
 	#Import necessary packages
 	from inra.ijpb.morphology import Strel, Morphology, MinimaAndMaxima
@@ -26,7 +26,6 @@ def cell_tracking(cellROIs, IDs, stackno, Roido, rm, iHeight, rt, IDs5, DAPIfilt
 	from JSF_package._misc_ import mask_confirmer
 	from ij.gui import ShapeRoi, OvalRoi
 	from ij.plugin.frame import RoiManager
-	from time import sleep
 	import os
 
 	IJ.redirectErrorMessages(True)
@@ -96,35 +95,62 @@ def cell_tracking(cellROIs, IDs, stackno, Roido, rm, iHeight, rt, IDs5, DAPIfilt
 	
 	
 		#This function gives our an image with the segmented regions, but its in a weird format, so we play around with it until we have a nice 8-bit binary image
+
+		IJ.run(ccImp, "Multiply...", "value=9999999999999")		
 		IJ.run(ccImp, "8-bit", "")
-		IJ.run(ccImp, "Multiply...", "value=255")
 		IJ.run(ccImp, "Make Binary", "")
+		mask_confirmer(iHeight + 20, ccImp)	
 		IJ.run(ccImp, "Invert", "")
 		IJ.run(ccImp, "Erode", "")	
-
+		
+	
 
 	else:
 		threshFilter = 999999999999
+		
 
 		if JSF_package.configBasic.singleCellMethod.endswith(".model"):
+			
 		
 			
 			if JSF_package.configBasic.singleCellMethod.find("_3D_.") == -1:
 			
-				from trainableSegmentation import WekaSegmentation
-				segmentator = WekaSegmentation( ccImp )
-				classifierPath = os.path.join(os.getcwd(), "jars", "Lib", "JSF_package", "Weka_Models", JSF_package.configBasic.singleCellMethod )
-				segmentator.loadClassifier(classifierPath)
-				resultant = segmentator.applyClassifier(ccImp, 0, False)
+				
+#				ccImp.show()
+#				exit()
+				if (cloneSeg == singleCellMethod) and (cloneChannel == cellCountChannel):
+					resultant = wekaSkipImage.duplicate()
+					wekaSkipImage = None
+					
+				else:
+				
+					from trainableSegmentation import WekaSegmentation
+					
+					wekaCal = ccImp.getCalibration()
+					segmentator = WekaSegmentation( ccImp )
+					classifierPath = os.path.join(os.getcwd(), "jars", "Lib", "JSF_package", "Weka_Models", JSF_package.configBasic.singleCellMethod )
+					segmentator.loadClassifier(classifierPath)
+					resultant = segmentator.applyClassifier(ccImp, 0, False)
+					del segmentator
+					resultant.setCalibration(wekaCal)
+				
+#				resultant.show()
+#				exit()
+				
 			else:
+				
 				segmentedIDsCC.setSlice(stackno)
 				resultant = segmentedIDsCC.crop()
 
 		else:
-
+			
+			
+			
 			from JSF_End_User_Made_Code._executor import user_made_code
 			resultant = user_made_code(JSF_package.configBasic.singleCellMethod, ccImp, IDs, rm, stackno, pouch, excludinator)
 
+			
+			
 		if seedChoiceCell == True:
 			seedIDcell.setSlice(stackno)
 			seedIDcell2 = seedIDcell.crop()
@@ -140,21 +166,37 @@ def cell_tracking(cellROIs, IDs, stackno, Roido, rm, iHeight, rt, IDs5, DAPIfilt
 
 		if JSF_package.configCellTrack.cellPost != "None" and JSF_package.configBasic.singleCellMethod.endswith(".model"):
 			
+			
 
-			if JSF_package.configCellTrack.cellPost == "Despeckle":
+			if JSF_package.configCellTrack.cellPost == "Despeckle" or JSF_package.configCellTrack.cellPost == "Despeckle and Watershed":
 				IJ.run(resultant, "Despeckle", "")
+			elif JSF_package.configCloneSeg.clonesPost == 'Dilate, close, erode':
+				print "Dilate, close, erode selected"	
 			elif JSF_package.configBasic.singleCellMethod.find("_3D_.") == -1:
 				from JSF_End_User_Made_Code._executor import user_made_code
 				resultant = user_made_code(JSF_package.configCellTrack.cellPost, resultant, IDs, rm, stackno, pouch, excludinator)
 			else:
 				from JSF_End_User_Made_Code._executor import user_made_code
 				resultant = user_made_code(JSF_package.configCellTrack.cellPost, resultant, segmentedIDs, rm, stackno, pouch, excludinator)
-
+			
+			
 		
-		resultant.getProcessor().setThreshold(1, 255, 0)
+		resultant.getProcessor().setThreshold(1, 1, 0)
 		IJ.run(resultant,"Convert to Mask", "")
+		
+		
+		if JSF_package.configCellTrack.cellPost == 'Dilate, close, erode':
+			IJ.run(resultant, "Dilate", "")
+			IJ.run(resultant, "Dilate", "")
+			IJ.run(resultant, "Close-", "")
+			IJ.run(resultant, "Erode", "")
+	
+		
+		if JSF_package.configCellTrack.cellPost == "Despeckle and Watershed":
+			IJ.run(resultant, "Remove Outliers...", "radius=2 threshold=50 which=Dark")
+			IJ.run(resultant, "Watershed", "")
+		
 		ccImp = resultant
-
 
 	#Make sure the mask was made correctly
 	iWidth = ccImp.getWidth()
@@ -164,7 +206,7 @@ def cell_tracking(cellROIs, IDs, stackno, Roido, rm, iHeight, rt, IDs5, DAPIfilt
 	#Run an analyze particles step to add each segmented region to the ROI manager
 	pl = rm.getCount()
 	ccImp.setCalibration( cal )
-	IJ.run(ccImp, "Analyze Particles...", "size="+str(minCellSize)+"-25 circularity=0.35-1.00 add")
+	IJ.run(ccImp, "Analyze Particles...", "size="+str(minCellSize)+"-"+str(maxCellSize)+" circularity="+str(minCircularity)+"-"+str(maxCircularity)+" add")
 	ccImp = IJ.createImage("ccImp", "8-bit white", iWidth, iHeight, 1)
 	while pl < rm.getCount():
 		cent = rm.getRoi(pl)
@@ -185,7 +227,7 @@ def cell_tracking(cellROIs, IDs, stackno, Roido, rm, iHeight, rt, IDs5, DAPIfilt
 	pl = rm.getCount()
 	pl2 = pl
 	ccImp.setCalibration( cal )
-	IJ.run(ccImp, "Analyze Particles...", "size="+str(minCellSize)+"-40 circularity=0.35-1.00 add")
+	IJ.run(ccImp, "Analyze Particles...", "size="+str(minCellSize)+"-"+str(maxCellSize)+" circularity="+str(minCircularity)+"-"+str(maxCircularity)+" add")
 	y = rm.getCount()
 	blorp1 = list()
 
@@ -231,5 +273,7 @@ def cell_tracking(cellROIs, IDs, stackno, Roido, rm, iHeight, rt, IDs5, DAPIfilt
 	cellROIs.append(blorp1)
 	IJ.run("Clear Results")
 
+	
+	
 	#return our array of individual cells.
 	return cellROIs

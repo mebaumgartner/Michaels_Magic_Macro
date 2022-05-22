@@ -91,8 +91,21 @@ class ButtonClic(ActionListener):
 			gd2.addNumericField("Fill holes in clone mask with area <= (scaled units):", cfgCS.holeDiameter,3)
 			gd2.setInsets(0,0,0)
 			gd2.addChoice("Max Z-projection of 'X' slices above and below current plane:", Numbers, str(cfgCS.rollingZ))
+			
+			#gd2.addCheckbox("Invert clones for WINWO (Default analysis only, Hi Paul!)", cfgCS.winwo)
 			gd2.setInsets(0,0,0)
-			gd2.addChoice("Set post-processing of Weka-segmented images (Weka segmentation only):", postChoices, cfgCS.clonesPost)
+			gd2.addChoice("Set post-processing of Weka-segmented images (Weka segmentation only):", (postChoices + ['Dilate, close, erode']), cfgCS.clonesPost)
+			
+			gd2.setInsets(0,0,0)
+			gd2.addMessage("Clone segmentation clustering with DBSCAN - requires BioVoxxel plugin", Font("Sanserif", Font.BOLD, 12))
+			gd2.setInsets(0,0,0)
+			gd2.addChoice("Select clone segmentation clustering method:", ["Disabled", "Cluster Without Flooding", "Cluster With Flooding", "Flood + Fill Holes"], str(cfgCS.DBSCANChoice))
+			gd2.setInsets(0,0,0)
+			gd2.addChoice("Minimum particle density:", newNumbers, str(cfgCS.DBSCANminDensityOE))
+			gd2.setInsets(0,0,0)
+			gd2.addNumericField("Distance (Epsilon):", cfgCS.DBSCANdistOE, 0)
+			gd2.setInsets(0,0,0)
+			gd2.addNumericField("Minimum number of cells in cluster:", cfgCS.DBSCANminCellsInCluster, 0)
 
 			
 			
@@ -134,6 +147,12 @@ class ButtonClic(ActionListener):
 				rollingZ = gd2.getNextChoice()
 				clonesPost = gd2.getNextChoice()
 				winwo = False
+				DBSCANChoice = gd2.getNextChoice()
+				DBSCANminDensityOE = gd2.getNextChoice()
+				DBSCANdistOE = gd2.getNextNumber()
+				DBSCANminCellsInCluster = gd2.getNextNumber()
+				
+				
 				DBSCANmode = gd2.getNextChoice()
 				DBSCANminDensity = gd2.getNextChoice()
 				DBSCANdist = gd2.getNextNumber()
@@ -161,6 +180,13 @@ class ButtonClic(ActionListener):
 				output = output + "holeDiameter="+str(holeDiameter) +"\n"
 				output = output + "rollingZ="+str(rollingZ) +"\n"
 				output = output + "winwo="+str(winwo) +"\n"
+				
+				output = output + "DBSCANChoice='"+str(DBSCANChoice) +"'\n"
+				output = output + "DBSCANminDensityOE="+str(DBSCANminDensityOE) +"\n"
+				output = output + "DBSCANdistOE="+str(DBSCANdistOE) +"\n"	
+				output = output + "DBSCANminCellsInCluster="+str(DBSCANminCellsInCluster)+"\n"		
+				
+				
 				output = output + "DBSCANmode='"+str(DBSCANmode) +"'\n"
 				output = output + "DBSCANminDensity="+str(DBSCANminDensity) +"\n"
 				output = output + "DBSCANdist="+str(DBSCANdist) +"\n"
@@ -185,13 +211,21 @@ class ButtonClic(ActionListener):
 		elif Source.label == "Set advanced single cell tracking parameters":
 
 			from JSF_package import configCellTrack as cfgCT
+			
+			postChoicesCT = postChoices + ["Despeckle and Watershed"] + ['Dilate, close, erode']
+
 		
 			gd2.addMessage("Advanced Single Cell Tracking Parameters", Font("Sanserif", Font.BOLD, 12))
 			gd2.addNumericField("Track individual cell ROIs with area >= (scaled units):", cfgCT.minCellSize, 3)
+			gd2.addNumericField("Exclude individual cell ROIs with area >= (scaled units):", cfgCT.maxCellSize, 3)
+			gd2.addNumericField("Track individual cell ROIs with circularity >= (scaled units):", cfgCT.minCircularity, 3)
+			gd2.addNumericField("Exclude individual cell ROIs with circularity >= (scaled units):", cfgCT.maxCircularity, 3)
 			gd2.addNumericField("Single cell centroid tracking: set centroid radius(scaled units):", cfgCT.cellCountRadius, 3)
-			gd2.addNumericField("Watershed function tolerance:", cfgCT.morphoSeg, 0)
-			gd2.addNumericField("Nuclear stain intensity threshold weighting:", cfgCT.filterWeight, 1)
-			gd2.addChoice("Set post-processing of Weka-segmented images (Weka segmentation only):", postChoices, cfgCT.cellPost)
+			gd2.addCheckbox("Measure cell distance to centroid of clones instead of ROI?", cfgCT.centroidChoice)
+			gd2.addNumericField("Watershed function tolerance (Default analysis only):", cfgCT.morphoSeg, 0)
+			gd2.addNumericField("Membrane stain intensity threshold weighting (default analysis only):", cfgCT.filterWeight, 1)
+			gd2.addNumericField("Nuclear stain intensity threshold weighting:", cfgCT.dapiFilterWeight, 1)
+			gd2.addChoice("Set post-processing of Weka-segmented images (Weka segmentation only):", postChoicesCT, cfgCT.cellPost)
 			gd2.addMessage("Seeded region growing options - requires IJ-plugins toolkit", Font("Sanserif", Font.BOLD, 12))
 			gd2.addCheckbox("Add a seeded region growing step?", cfgCT.seedChoiceCell)
 			gd2.addToSameRow()
@@ -206,9 +240,14 @@ class ButtonClic(ActionListener):
 
 			if gd2.wasOKed():
 				minCellSize = gd2.getNextNumber()
+				maxCellSize = gd2.getNextNumber()
+				minCircularity = gd2.getNextNumber()
+				maxCircularity = gd2.getNextNumber()
 				cellCountRadius = gd2.getNextNumber()
+				centroidChoice = gd2.getNextBoolean()
 				morphoSeg = gd2.getNextNumber()
 				filterWeight = gd2.getNextNumber()
+				dapiFilterWeight = gd2.getNextNumber()
 				cellPost = gd2.getNextChoice()
 				seedChoiceCell = gd2.getNextBoolean()
 				seedChannelCell = gd2.getNextChoice()
@@ -221,9 +260,14 @@ class ButtonClic(ActionListener):
 				
 
 				output = output + "minCellSize="+str(minCellSize) +"\n"
+				output = output + "maxCellSize="+str(maxCellSize) +"\n"
+				output = output + "minCircularity="+str(minCircularity) +"\n"
+				output = output + "maxCircularity="+str(maxCircularity) +"\n"
 				output = output + "cellCountRadius="+ str(cellCountRadius)+"\n"
 				output = output + "morphoSeg="+ str(morphoSeg)+"\n"
+				output = output + "centroidChoice=" + str(centroidChoice)+"\n"
 				output = output + "filterWeight="+ str(filterWeight)+"\n"
+				output = output + "dapiFilterWeight=" + str(dapiFilterWeight)+"\n"
 				output = output + "seedChoiceCell="+ str(seedChoiceCell)+"\n"
 				output = output + "seedChannelCell='"+ str(seedChannelCell)+"'\n"
 				output = output + "invertSeedCell="+ str(invertSeedCell)+"\n"
@@ -386,6 +430,7 @@ class ButtonClic(ActionListener):
 			from JSF_package import configRoi as cfgR
 
 			gd2.addMessage("ROI Segmentation and Options", Font("Sanserif", Font.BOLD, 12))
+			gd2.addNumericField("Remove particles from ROI with size less than or equal to:", cfgR.minRoiSize, 1)
 			gd2.addCheckbox("Compare two regions in an image?", cfgR.halfHalfNC)
 			gd2.addChoice("Set post-processing of Weka-segmented images (Weka segmentation only):", postChoices, cfgR.roiPost)
 			
@@ -404,6 +449,7 @@ class ButtonClic(ActionListener):
 			
 			if gd2.wasOKed():
 				halfHalf = False
+				minRoiSize = gd2.getNextNumber()
 				halfHalfNC = gd2.getNextBoolean()
 				roiPost = gd2.getNextChoice()
 				seedChoice = gd2.getNextBoolean()
@@ -426,6 +472,7 @@ class ButtonClic(ActionListener):
 				output = output+"roiPost='"+str(roiPost)+"'\n"	
 				output = output + "halfHalf="+str(halfHalf) +"\n"
 				output = output + "blurRoi="+str(blurRoi) +"\n"
+				output = output + "minRoiSize="+str(minRoiSize) +"\n"
 				output = output + "halfHalfNC="+str(halfHalfNC) +"\n"
 
 				path = os.getcwd()
@@ -493,7 +540,7 @@ def Open_GUI():
 		preProcess = preProcess + ["Make Your Own New Script!"]
 		segChoices = segChoices + ["Add_Custom_Weka_Classifier", "Add_Custom_3D_Weka_Classifier", "Make Your Own New Script!"]
 		#Set up out generic dialog panel to get user input
-		gd = GenericDialogPlus("Set up your analysis!")
+	
 
 		
 		Numbers = range(1,253)
@@ -509,12 +556,85 @@ def Open_GUI():
 			sc+=1
 			speckleOptions = speckleOptions+["Count, Area, Fluorescence + Gauss="+str(sc)]
 			
+		if cfg.zMethod != "Disabled":
+			gdZOption = True
+		else:
+			gdZOption = False
 		
+		if cfg.cloneSeg != "Use ROIs As Clones":
+			gdCloneOption = True
+		else:
+			gdCloneOption = False
+			
+		if cfg.singleCellMethod != "Disabled":
+			gdIndividualCells = True
+		else:
+			gdIndividualCells = False
+			
+		if cfg.cellDeathSegMethod != "Disabled":
+			gdFociChoice = True
+		else:
+			gdFociChoice = False
+			
+		if cfg.speckleMethod != "Disabled":
+			speckleChoice = True
+		else:
+			speckleChoice = False
+			
+		#Here we add the simplified start up menu to determine what options we include in the inputs GUI
+		simpleGd = GenericDialogPlus("How would you like to analyze your images today?")
+		
+		simpleGd.setFont(Font("Sanserif", Font.PLAIN, 12))
+		simpleGd.setInsets(0,0,0)
+		simpleGd.addMessage("How would you like to analyze your images today?", Font("Sanserif", Font.BOLD, 12))
+		simpleGd.setInsets(0,0,0)
+		simpleGd.addCheckbox("Do you wish to use scaled units (unchecking this option will use pixel units)?", cfg.gdScaledOption)
+		simpleGd.setInsets(0,0,0)
+		simpleGd.addCheckbox("Do you want to convert 3D stacks to 2D with a Z projection?", gdZOption)
+		simpleGd.setInsets(0,0,0)
+		simpleGd.addCheckbox("Do you want to analyze clones/genotypes within the image?", gdCloneOption)
+		simpleGd.setInsets(0,0,0)
+		simpleGd.addCheckbox("Do you want to count and analyze individual cells within the image?", gdIndividualCells)
+		simpleGd.setInsets(0,0,0)
+		simpleGd.addCheckbox("Do you want to analyze discrete foci within the image?", gdFociChoice)
+		simpleGd.setInsets(0,0,0)
+		simpleGd.addCheckbox("Do you want to analyze the images for fluorescence?", cfg.fluoChoice)
+		simpleGd.setInsets(0,0,0)
+		simpleGd.addCheckbox("Do you want to analyze the images for speckles?", speckleChoice)
+		simpleGd.setInsets(0,0,0)
+		simpleGd.addCheckbox("Are your files timelapse videos?", cfg.timelapse)
+	
+		
+		simpleGd.showDialog()
+		
+		if simpleGd.wasOKed():
+			IJ.log("First steps taken!")
+		else:
+			ok = 0
+			continue
+			
+		gdScaledOption = simpleGd.getNextBoolean()
+		gdZOption = simpleGd.getNextBoolean()
+		gdCloneOption = simpleGd.getNextBoolean()
+		gdIndividualCells =simpleGd.getNextBoolean()
+		gdFociChoice = simpleGd.getNextBoolean()
+
+		fluoChoice = simpleGd.getNextBoolean()
+		speckleChoice = simpleGd.getNextBoolean()
+		timelapse = simpleGd.getNextBoolean()
+	
+		
+		gd = GenericDialogPlus("Set up your analysis!")
 	
 		#Add all out options to the generic dialog, pull all default variables from the config file
 		gd.setFont(Font("Sanserif", Font.PLAIN, 12))
-		gd.setInsets(0,0,0)
-		gd.addChoice("Z project stack (converts 3D stacks to 2D projections)?", zOptions, str(cfg.zMethod))
+		
+		if gdZOption == True:
+			gd.setInsets(0,0,0)
+			gd.addMessage("Specify Z projection method", Font("Sanserif", Font.BOLD, 12))
+			gd.setInsets(0,0,0)
+			gd.addChoice("Z project stack (converts 3D stacks to 2D projections)?", zOptions, str(cfg.zMethod))
+			
 		gd.setInsets(0,0,0)
 		gd.addMessage("Region of Interest (ROI) Selection Settings", Font("Sanserif", Font.BOLD, 12))
 		gd.setInsets(0,0,0)
@@ -527,71 +647,81 @@ def Open_GUI():
 		gd.addToSameRow()
 		gd.addStringField("Specify ROI selection channel (separate multiple channels with commas):", str(cfg.ROIchannel))
 		
-		gd.setInsets(0,0,0)
-		gd.addMessage("Clone/Genotype Segmentation Settings", Font("Sanserif", Font.BOLD, 12))
-		gd.setInsets(0,0,0)
-		gd.addButton("Set advanced clone segmentation parameters", ButtonClic())
-		items = ["Membrane-tagged GFP", "Cytosolic GFP", "Use ROIs As Clones"]+segChoices
-		gd.setInsets(0,0,0)
-		gd.addChoice("How should clones be segmented?", items, cfg.cloneSeg)
-		gd.addToSameRow()
-		gd.addStringField("Specify clone segmentation channel (separate multiple channels with commas):", str(cfg.cloneChannel))
-		gd.setInsets(0,0,0)
-		gd.addChoice("Specify number of clone genotypes:", Numbers, str(cfg.numGenotypes))
-		gd.setInsets(0,0,0)
-		gd.addCheckbox("Analyze each clone individually?", cfg.cloneTracking)
-		gd.addToSameRow()
-		gd.addNumericField("Track individual clone ROIs with area >= (scaled units):", cfg.minCloneSize, 1)
+		if gdCloneOption == True:
+		
+			gd.setInsets(0,0,0)
+			gd.addMessage("Clone/Genotype Segmentation Settings", Font("Sanserif", Font.BOLD, 12))
+			gd.setInsets(0,0,0)
+			gd.addButton("Set advanced clone segmentation parameters", ButtonClic())
+			items = ["Membrane-tagged GFP", "Cytosolic GFP", "Use ROIs As Clones"]+segChoices
+			gd.setInsets(0,0,0)
+			gd.addChoice("How should clones be segmented?", items, cfg.cloneSeg)
+			gd.addToSameRow()
+			gd.addStringField("Specify clone segmentation channel (separate multiple channels with commas):", str(cfg.cloneChannel))
+			gd.setInsets(0,0,0)
+			gd.addChoice("Specify number of clone genotypes:", Numbers, str(cfg.numGenotypes))
+			gd.setInsets(0,0,0)
+			gd.addCheckbox("Analyze each clone individually?", cfg.cloneTracking)
+			gd.addToSameRow()
+			gd.addNumericField("Track individual clone ROIs with area >= (scaled units):", cfg.minCloneSize, 1)
+			
+		if gdIndividualCells == True:
 
-		gd.setInsets(0,0,0)
-		gd.addMessage("Single Cell Tracking Settings",  Font("Sanserif", Font.BOLD, 12))
-		gd.setInsets(0,0,0)
-		gd.addButton("Set advanced single cell tracking parameters", ButtonClic())
-		items = ["Disabled", "Default"]+segChoices
-		gd.setInsets(0,0,0)
-		gd.addChoice("How should single cells be segmented?", items, cfg.singleCellMethod)
-		gd.setInsets(0,0,0)
-		gd.addChoice("Specify nuclear stain channel for single cell filtering", ["Disabled"] + Numbers, str(cfg.DAPIchannel))
-		gd.addToSameRow()
-		gd.addStringField("Specify single cell segmentation channel (separate multiple channels with commas):", str(cfg.cellCountChannel))
-		gd.setInsets(0,0,0)
-		gd.addCheckbox("Analyze single cells for spatial and fluorescence properties?", cfg.cellCountDeluxe)
-		gd.addToSameRow()
-		gd.addCheckbox("Exlude cells which overlap with foci?", cfg.fociExcluder)
+			gd.setInsets(0,0,0)
+			gd.addMessage("Single Cell Tracking Settings",  Font("Sanserif", Font.BOLD, 12))
+			gd.setInsets(0,0,0)
+			gd.addButton("Set advanced single cell tracking parameters", ButtonClic())
+			items = ["Disabled", "Default"]+segChoices
+			gd.setInsets(0,0,0)
+			gd.addChoice("How should single cells be segmented?", items, cfg.singleCellMethod)
+			gd.setInsets(0,0,0)
+			gd.addChoice("Specify nuclear stain channel for single cell filtering", ["Disabled"] + Numbers, str(cfg.DAPIchannel))
+			gd.addToSameRow()
+			gd.addStringField("Specify single cell segmentation channel (separate multiple channels with commas):", str(cfg.cellCountChannel))
+			gd.setInsets(0,0,0)
+			gd.addCheckbox("Analyze single cells for spatial and fluorescence properties?", cfg.cellCountDeluxe)
+			gd.addToSameRow()
+			gd.addCheckbox("Exlude cells which overlap with foci?", cfg.fociExcluder)
+			
+		if gdFociChoice == True:
 
-		gd.setInsets(0,0,0)
-		gd.addMessage("Foci Segmentation Settings", Font("Sanserif", Font.BOLD, 12))
-		gd.setInsets(0,0,0)
-		gd.addButton("Set advanced foci segmentation parameters", ButtonClic())
-		items = ["Disabled", "Default", "High Background"]+segChoices
-		gd.setInsets(0,0,0)
-		gd.addChoice("How should foci events be segmented?", items, cfg.cellDeathSegMethod)
-		gd.addToSameRow()
-		gd.addStringField("Specify foci segmentation channel (separate multiple channels with commas):", str(cfg.dcp1Channel))
-		gd.setInsets(0,0,0)
-		gd.addCheckbox("Count number of individual foci events?", cfg.dcp1Counting)
-		gd.addToSameRow()
-		gd.addCheckbox("Analyze single foci for spatial and fluorescence properties?", cfg.dcp1Deluxe)
-		gd.addButton("Set advanced foci event counting parameters", ButtonClic())
+			gd.setInsets(0,0,0)
+			gd.addMessage("Foci Segmentation Settings", Font("Sanserif", Font.BOLD, 12))
+			gd.setInsets(0,0,0)
+			gd.addButton("Set advanced foci segmentation parameters", ButtonClic())
+			items = ["Disabled", "Default", "High Background"]+segChoices
+			gd.setInsets(0,0,0)
+			gd.addChoice("How should foci events be segmented?", items, cfg.cellDeathSegMethod)
+			gd.addToSameRow()
+			gd.addStringField("Specify foci segmentation channel (separate multiple channels with commas):", str(cfg.dcp1Channel))
+			gd.setInsets(0,0,0)
+			gd.addCheckbox("Count number of individual foci events?", cfg.dcp1Counting)
+			gd.addToSameRow()
+			gd.addCheckbox("Analyze single foci for spatial and fluorescence properties?", cfg.dcp1Deluxe)
+			gd.addButton("Set advanced foci event counting parameters", ButtonClic())
 
-		gd.setInsets(0,0,0)
-		gd.addMessage("Fluorescence and Speckles Settings", Font("Sanserif", Font.BOLD, 12))
-		gd.setInsets(0,0,0)
-		gd.addChoice("Pre-Process Fluorescence Channel Method:", preProcess, str(cfg.preProcess))
-		gd.setInsets(0,0,0)
-		gd.addCheckbox("Analyze clones for mean fluorescence intensity?", cfg.fluoChoice)
-		gd.addToSameRow()
-		gd.addStringField("Specify fluorescence channel (For pre-processing with multiple channels, separate with commas)", str(cfg.fluoChannel))
-		gd.setInsets(0,0,0)
-		gd.addChoice("Analyze clones for speckles?", speckleOptions, cfg.speckleMethod)
-		gd.addToSameRow()
-		gd.addChoice("Specify speckles channel", Numbers, str(cfg.speckleChannel))
-		gd.setInsets(0,0,0)
-		gd.addNumericField("Speckle detection noise tolerance:", cfg.speckleNoise, 0)
-		gd.setInsets(0,0,0)
-		gd.addCheckbox("Analyze timelapse images?", cfg.timelapse)
-		gd.addToSameRow()
-		gd.addChoice("Set timelapse frame interval", Numbers, str(cfg.frame_interval))
+		if fluoChoice == True:
+			gd.setInsets(0,0,0)
+			gd.addMessage("Fluorescence Settings", Font("Sanserif", Font.BOLD, 12))
+			gd.setInsets(0,0,0)
+			gd.addChoice("Pre-Process Fluorescence Channel Method:", preProcess, str(cfg.preProcess))
+			gd.setInsets(0,0,0)
+			gd.addStringField("Specify fluorescence channel (For pre-processing with multiple channels, separate with commas)", str(cfg.fluoChannel))
+			
+		if speckleChoice == True:
+
+			gd.addMessage("Speckles Settings", Font("Sanserif", Font.BOLD, 12))
+			gd.setInsets(0,0,0)
+			gd.addChoice("Analyze clones for speckles?", speckleOptions, cfg.speckleMethod)
+			gd.addToSameRow()
+			gd.addChoice("Specify speckles channel", Numbers, str(cfg.speckleChannel))
+			gd.setInsets(0,0,0)
+			gd.addNumericField("Speckle detection noise tolerance:", cfg.speckleNoise, 0)
+			
+		if timelapse == True:	
+			gd.setInsets(0,0,0)
+			gd.addMessage("Timelapse settings", Font("Sanserif", Font.BOLD, 12))
+			gd.addChoice("Set timelapse frame interval", Numbers, str(cfg.frame_interval))
 	
 		
 
@@ -609,9 +739,14 @@ def Open_GUI():
 			
 			#Create an empty string. We will add things to this to write to out defaults file, if prompted by user
 			output = ""
-
-			zMethod = gd.getNextChoice()
+			
+		
+			if gdZOption == True:
+				zMethod = gd.getNextChoice()
+			else:
+				zMethod = "Disabled"
 			output = output+"zMethod='"+str(zMethod)+"'\n"
+				
 		
 			#Extract variables from dropdown menus
 			ROIseg = gd.getNextChoice()
@@ -624,17 +759,28 @@ def Open_GUI():
 			ROIchannel = gd.getNextString()
 			output = output+"ROIchannel='"+str(ROIchannel)+"'\n"
 			
-			cloneSeg = gd.getNextChoice()
-			output = output+"cloneSeg='"+str(cloneSeg)+"'\n"
-
-			numGenotypes = gd.getNextChoice()
-			output = output+"numGenotypes="+str(numGenotypes)+"\n"
+			if gdCloneOption == True:
 			
-			cloneChannel = gd.getNextString()
+				cloneSeg = gd.getNextChoice()
+				numGenotypes = gd.getNextChoice()
+				cloneChannel = gd.getNextString()
+				
+			else:
+				cloneSeg = "Use ROIs As Clones"
+				numGenotypes = 1
+				cloneChannel = "1r"
+				
+			output = output+"cloneSeg='"+str(cloneSeg)+"'\n"
+			output = output+"numGenotypes="+str(numGenotypes)+"\n"
 			output = output+"cloneChannel='"+str(cloneChannel)+"'\n"
 			
-			singleCellMethod = gd.getNextChoice()
+			if gdIndividualCells == True:
+				singleCellMethod = gd.getNextChoice()
+			else:
+				singleCellMethod = "Disabled"
+				
 			output = output+"singleCellMethod='"+str(singleCellMethod)+"'\n"
+			
 			if morphoInstalled == 0 and singleCellMethod == "Default":
 				singleCellMethod = "Disabled"
 				IJ.error("To perform the default single cell tracking, please install MorphoLibJ")
@@ -645,15 +791,27 @@ def Open_GUI():
 				cellCount = False
 			output = output+"cellCount="+str(cellCount)+"\n"
 			
-			DAPIchannel = gd.getNextChoice()
+			if gdIndividualCells == True:
+				DAPIchannel = gd.getNextChoice()
+			else:
+				DAPIchannel = cfg.DAPIchannel
+			
 			if DAPIchannel == "Disabled":
 				DAPIchannel = "'Disabled'"
 			output = output+"DAPIchannel="+str(DAPIchannel)+"\n"
-	
-			cellCountChannel = gd.getNextString()
+			
+			if gdIndividualCells == True:
+				cellCountChannel = gd.getNextString()
+			else:
+				cellCountChannel = cfg.cellCountChannel
+
 			output = output+"cellCountChannel='"+str(cellCountChannel)+"'\n"
 			
-			cellDeathSegMethod = gd.getNextChoice()
+			if gdFociChoice == True:
+				cellDeathSegMethod = gd.getNextChoice()
+			else:
+				cellDeathSegMethod = "Disabled"
+			
 			output = output+"cellDeathSegMethod='"+str(cellDeathSegMethod)+"'\n"
 			if morphoInstalled == 0 and cellDeathSegMethod == "Default":
 				cellDeathSegMethod = "Disabled"
@@ -664,59 +822,101 @@ def Open_GUI():
 			else:
 				dcp1Choice = False
 			output = output+"dcp1Choice="+str(dcp1Choice)+"\n"
+			
+			if gdFociChoice == True:
+				dcp1Channel = gd.getNextString()
+			else:
+				dcp1Channel = cfg.dcp1Channel
 
-
-			preProcess = gd.getNextChoice()
-			output = output+"preProcess='"+str(preProcess)+"'\n"
-	
-			dcp1Channel = gd.getNextString()
-			output = output+"dcp1Channel='"+str(dcp1Channel)+"'\n"
+			if fluoChoice == True:
+				preProcess = gd.getNextChoice()
+			else:
+				preProcess = cfg.preProcess
+				
 
 
 			
-			fluoChannel = gd.getNextString()
-			output = output+"fluoChannel='"+str(fluoChannel)+"'\n"
+			output = output+"preProcess='"+str(preProcess)+"'\n"
+			output = output+"dcp1Channel='"+str(dcp1Channel)+"'\n"
 
-			speckleMethod = gd.getNextChoice()
+			if fluoChoice == True:
+				fluoChannel = gd.getNextString()
+			
+			else:
+				fluoChannel = cfg.fluoChannel
+			
+			output = output+"fluoChannel='"+str(fluoChannel)+"'\n"
+			
+			if speckleChoice == True:
+				speckleMethod = gd.getNextChoice()
+				speckleChannel = gd.getNextChoice()
+			else:
+				speckleMethod = "Disabled"
+				speckleChannel = 1
 
 			if seedInstalled == 0 and speckleMethod != "Disabled":
 				speckleMethod = "Disabled"
 				IJ.error("To perform speckle area and fluorescence measurements, please install the IJ-plugins toolkit")
+				
 			output = output+"speckleMethod='"+str(speckleMethod)+"'\n"
-			
-			speckleChannel = gd.getNextChoice()
 			output = output+"speckleChannel="+str(speckleChannel)+"\n"
 	
-			frame_interval = gd.getNextChoice()
+			if timelapse == True:
+				frame_interval = gd.getNextChoice()
+			else:
+				frame_interval = cfg.frame_interval
 			output = output+"frame_interval="+str(frame_interval)+"\n"
+			
+
 
 			saveLoad = gd.getNextChoice()
+			
+			
+			
+#					
+#		gdZOption = simpleGd.getNextBoolean()
+#		gdCloneOption = simpleGd.getNextBoolean()
+#		gdIndividualCells =simpleGd.getNextBoolean()
+#		gdFociChoice = simpleGd.getNextBoolean()
+#		fluoChoice = simpleGd.getNextBoolean()
+#		speckleChoice = simpleGd.getNextBoolean()
+#		timelapse = simpleGd.getNextBoolean()
 	
 			#Extract variables from checkboxes
-			cloneTracking = gd.getNextBoolean()
+			if gdCloneOption == True:
+				cloneTracking = gd.getNextBoolean()
+			else:
+				cloneTracking = False
 			output = output+"cloneTracking="+str(cloneTracking)+"\n"
 			
-			cellCountDeluxe = gd.getNextBoolean()
+			if gdIndividualCells == True:
+				cellCountDeluxe = gd.getNextBoolean()
+				fociExcluder = gd.getNextBoolean()
+			else:
+				cellCountDeluxe = cfg.cellCountDeluxe
+				fociExcluder = cfg.fociExcluder
 			output=output+"cellCountDeluxe="+str(cellCountDeluxe)+"\n"
-			
-			fociExcluder = gd.getNextBoolean()
 			output=output+"fociExcluder="+str(fociExcluder)+"\n"
-
-			dcp1Counting = gd.getNextBoolean()
+			
+			if gdFociChoice == True:
+				dcp1Counting = gd.getNextBoolean()
+				dcp1Deluxe = gd.getNextBoolean()
+			else:
+				dcp1Counting = False
+				dcp1Deluxe = False
+			
+			
 			output = output+"dcp1Counting="+str(dcp1Counting)+"\n"
-
-			dcp1Deluxe = gd.getNextBoolean()
 			output=output+"dcp1Deluxe="+str(dcp1Deluxe)+"\n"
 			
-			fluoChoice = gd.getNextBoolean()
+#			fluoChoice = gd.getNextBoolean()
 			output = output+"fluoChoice="+str(fluoChoice)+"\n"
+			output = output+"gdScaledOption="+str(gdScaledOption)+"\n"
 			
 			speckle = True
 			if speckleMethod == "Disabled":
 				speckle = False
 			output = output+"speckle="+str(speckle)+"\n"
-	
-			timelapse = gd.getNextBoolean()
 			output = output+"timelapse="+str(timelapse)+"\n"
 
 
@@ -724,10 +924,19 @@ def Open_GUI():
 			
 	
 			#Extract variables from numeric fields
-			minCloneSize = gd.getNextNumber()
+			
+			if gdCloneOption == True:
+				minCloneSize = gd.getNextNumber()
+			else:
+				minCloneSize = cfg.minCloneSize
+			
 			output = output+"minCloneSize="+str(minCloneSize)+"\n"
 			
-			speckleNoise = gd.getNextNumber()
+			if speckleChoice == True:
+				speckleNoise = gd.getNextNumber()
+			else:
+				speckleNoise = cfg.speckleNoise
+				
 			output = output+"speckleNoise="+str(speckleNoise)+"\n"
 
 			channelChecker = [dcp1Channel, ROIchannel, cloneChannel, cellCountChannel, fluoChannel]
@@ -763,10 +972,15 @@ def Open_GUI():
 							digits = False
 								
 			if digits == False:
+				
+	
+			
 				IJ.error("Invalid channel input! Channel inputs must be integers separated by commas!")
 				gdLoop = 1
 				continue
 			if error != "":
+	
+				
 				error.strip(" and")
 				IJ.error("Error with "+ error+": you cannot specify multiple channels for Default analyses")
 				gdLoop = 1
@@ -784,6 +998,8 @@ def Open_GUI():
 	
 
 			elif saveLoad == "Save current settings":
+			
+
 				SLloop = 1
 				gdLoop = 1
 				while SLloop == 1:
@@ -808,6 +1024,7 @@ def Open_GUI():
 							output = output+"halfHalfNC="+str(JSF_package.configRoi.halfHalfNC)+"\n"
 							output = output+"roiPost='"+str(JSF_package.configRoi.roiPost)+"'\n"
 							output = output+"blurRoi="+str(JSF_package.configRoi.blurRoi)+"\n"
+							output = output+"minRoiSize="+str(JSF_package.configRoi.minRoiSize)+"\n"
 
 							output = output+"visualize="+str(JSF_package.configSave.visualize)+"\n"
 							output = output+"saveChoice="+str(JSF_package.configSave.saveChoice)+"\n"
@@ -842,10 +1059,16 @@ def Open_GUI():
 							output = output+"seedChannelClones='"+str(JSF_package.configCloneSeg.seedChannelClones)+"'\n"
 							output = output+"minSeedSizeClones="+str(JSF_package.configCloneSeg.minSeedSizeClones)+"\n"
 							output = output+"invertSeedClones="+str(JSF_package.configCloneSeg.invertSeedClones)+"\n"
+							
+							output = output + "DBSCANChoice='"+str(JSF_package.configCloneSeg.DBSCANmode) +"'\n"
+							output = output + "DBSCANminDensityOE="+str(JSF_package.configCloneSeg.DBSCANminDensityOE) +"\n"
+							output = output + "DBSCANdistOE="+str(JSF_package.configCloneSeg.DBSCANdistOE) +"\n"			
+							output = output + "DBSCANminCellsInCluster="+str(JSF_package.configCloneSeg.DBSCANminCellsInCluster)+"\n"				
+							
 							output = output + "DBSCANmode='"+str(JSF_package.configCloneSeg.DBSCANmode) +"'\n"
 							output = output + "DBSCANminDensity="+str(JSF_package.configCloneSeg.DBSCANminDensity) +"\n"
 							output = output + "DBSCANdist="+str(JSF_package.configCloneSeg.DBSCANdist) +"\n"
-							output = output+"clonesPost='"+str(JSF_package.configCloneSeg.clonesPost)+"'\n"
+							output = output + "clonesPost='"+str(JSF_package.configCloneSeg.clonesPost)+"'\n"
 							output = output + "blurClones="+str(JSF_package.configCloneSeg.blurClones) +"\n"
 
 							output = output+"seedChoiceCell="+str(JSF_package.configCellTrack.seedChoiceCell)+"\n"
@@ -853,9 +1076,14 @@ def Open_GUI():
 							output = output+"invertSeedCell="+str(JSF_package.configCellTrack.invertSeedCell)+"\n"
 							output = output+"minSeedSizeCell="+str(JSF_package.configCellTrack.minSeedSizeCell)+"\n"
 							output = output+"minCellSize="+str(JSF_package.configCellTrack.minCellSize)+"\n"
+							output = output+"maxCellSize="+str(JSF_package.configCellTrack.maxCellSize)+"\n"
+							output = output+"minCircularity="+str(JSF_package.configCellTrack.minCircularity)+"\n"
+							output = output+"maxCircularity="+str(JSF_package.configCellTrack.maxCircularity)+"\n"
 							output = output+"cellCountRadius="+str(JSF_package.configCellTrack.cellCountRadius)+"\n"
 							output = output+"morphoSeg="+str(JSF_package.configCellTrack.morphoSeg)+"\n"
+							output = output+ "centroidChoice="+str(JSF_package.configCellTrack.centroidChoice)+"\n"
 							output = output+"filterWeight="+str(JSF_package.configCellTrack.filterWeight)+"\n"
+							output = output+"dapiFilterWeight="+str(JSF_package.configCellTrack.dapiFilterWeight)+"\n"
 							output = output+"cellPost='"+str(JSF_package.configCellTrack.cellPost)+"'\n"
 							output = output+"blurCell="+str(JSF_package.configCellTrack.blurCell)+"\n"
 
@@ -877,6 +1105,8 @@ def Open_GUI():
 							IJ.error("That name is already taken! Please choose another name.")
 				
 			else:
+			
+				
 				gdLoop = 1
 				
 				loader = "_"+saveLoad+"_userSettingFile_.py"
@@ -917,6 +1147,8 @@ def Open_GUI():
 			if ("Custom" in cloneSeg) or ("Custom" in singleCellMethod) or ("Custom" in cellDeathSegMethod) or ("Custom" in ROIseg):
 				looper = 1
 				gdLoop = 1
+				
+				
 				while looper == 1:
 					looper = 0
 					gdCS = GenericDialogPlus("Choose your custom segmentation methods")

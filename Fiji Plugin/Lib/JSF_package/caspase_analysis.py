@@ -51,21 +51,16 @@ def caspase_segmentor (cal, imp, rm, Title, stackno, pouch, caspaseSegment, dcp1
 	import time
 	while 1 <= Max:
 
-		time.sleep(0.0001)
+		#time.sleep(0.0001)
 		print "Caspase segmentor initiated"
 		
 		IJ.run("Clear Results")
-		print 1
 		IJ.run(imp, "Select None", "")
-		print 2
 		IJ.run(imp, "Measure", "")
-		print 3
 		Max = rt.getValue("Max", 0)
-		print 4
 
 		if Max == 0:
 			break
-			print 5
 		
 		print "Duplicating caspase masks"
 		imp2 = imp.duplicate()
@@ -374,7 +369,6 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 
 		from inra.ijpb.watershed import Watershed
 
-		print 1
 
 		#we get our images and clean them up a little bit in preparation for the watershed
 		IJ.run(casMask2, "Invert", "")
@@ -383,13 +377,10 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 		IJ.run(casMask2, "Invert", "")
 
 
-		print 2
-
 		#Run the watershed
 		newImp = Watershed.computeWatershed(countImp,  casMask2, 4, 0, 255)
 		forCounts = newImp.duplicate()
 
-		print 3
 
 		#Now we get the watershed-ed image, and put into a properly formatted binary image
 		IJ.setThreshold(newImp, -1000000000000000000000000000000.000000000, 0.000000000)
@@ -399,8 +390,6 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 		IJ.run(newImp, "Canvas Size...", "width="+str(newImp.getWidth())+" height="+str(iHeight)+" position=Top-Left zero")
 		IJ.run(newImp, "Invert", "")
 
-
-		print 4
 		
 		#get the rois and add them to the manager
 		IJ.run(newImp, "Create Selection", "")
@@ -408,16 +397,12 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 		IJ.run(newImp, "Add to Manager", "")
 		x = rm.getCount()
 
-		print 5
-
 		#scrap the images we aren't using anymore
 		countImp.hide()
 		casMask2.hide()
 		countImp.flush()
 		casMask2.flush()
 		IJ.runMacro("run('Close All')")
-
-		print 6
 
 		#We then feed this image into the caspase_segmentor function
 		IJ.setForegroundColor(255, 255, 255)
@@ -430,7 +415,6 @@ def dcp1_analysis( pouch, IDs2, Title, stackno, iHeight, rm, sliceROIs, casRefAr
 		cal = casImp.getCalibration()
 		caliber = cal.pixelHeight
 
-		print 7
 
 
 		caspaseSegment = caspase_segmentor (cal, forCounts, rm, Title, stackno, pouch, caspaseSegment,  dcp1Radius, caliber, minCasSize, timepoint, excludinator, iHeight)

@@ -324,7 +324,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 
 		#Here we run our measurements on the image. The measurements are all now in the measurements table
 		IJ.run("Clear Results")
-		time.sleep(0.0001)
+		#time.sleep(0.0001)
 		IJ.run(imp, "Measure", "")
 
 		#Ma is the measured area and Mf is the measured fluorescence
@@ -1037,19 +1037,24 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 
 		#Here we create our output image stacks. These vary based on which output is being made
 		outImp = ImageStack(iWidth, iHeight)
-
+		
+		print "trackCount =", trackCount
+		
 		x = 0
 		if trackCount == 1:
+			print 1
 			while x < len(cloneTrackingArray):
 				outImp.addSlice(cloneTrackingArray[x].getTitle(), cloneTrackingArray[x].getProcessor())
 				cloneMaskStack.addSlice(cloneMaskArray[x].getTitle(), cloneMaskArray[x].getProcessor())
 				x = x + 1
 		elif trackCount == 2:
+			print 2
 			while x < len(casMaskArray):
 				top = casMaskArray[x]
 				outImp.addSlice(casMaskArray[x].getTitle(), casMaskArray[x].getProcessor())
 				x = x + 1
 		else:
+			print 3
 			while x < len(cloneImpArray):
 				outImp.addSlice(cloneImpArray[x].getTitle(), cloneImpArray[x].getProcessor())
 				x = x + 1
@@ -1068,6 +1073,9 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 			#Create an image stack to which we weill write the output clone tracking masks
 			clDup = cloneMaskStack.duplicate()
 			outClImp = ImagePlus("outClImp", clDup)
+			
+			#This is the line added to fix the single clones bug
+			IJ.run("Clear Results")
 
 
 
@@ -1075,8 +1083,6 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 
 		#Pull the clone arrays from the 2d array. We are now looping through each group of ROIs batched together as a clone or cell
 		count = 0
-
-
 
 		ROIgenotype=0
 		for genotype in assignments:
@@ -1154,8 +1160,7 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 				for c in clone:
 
 					#Get the border ROIs for comparison
-
-
+					
 					for border in borderArray[ROIgenotype-1]:
 
 						#Determine if this border is at the correct z-level
@@ -1164,6 +1169,8 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 							zBorder = border
 						if c < border:
 							break
+							
+					
 
 					#Get the total caspase ROI for comparison. We will use this for determing caspase coverage of individual clones
 					if (dcp1Choice == 1):
@@ -1223,6 +1230,10 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 							perimeterROI = fullCloneROIArray[ROIgenotype-1]
 							perimeterROI=perimeterROI[int(bName) -zStart]
 							xCoordClone, yCoordClone = JSF_package._misc_.find_minimum_distance(perimeterROI, xCoordCell, yCoordCell)
+							
+#							if configCellTrack.centroidChoice == True:
+#								
+#								xCoordPouch, yCoordPouch = perimeterROI.getContourCentroid()
 
 
 							if (fluoChoice == True):
@@ -2014,17 +2025,24 @@ def create_clone_table(rtC, cloneLoLa, cloneLoLb, timepoint):
 	#create a superset of LoLa and LoLb, we keep track of where the switch between the two lists occurred by getting the length of LoLa
 
 	superset = cloneLoLa + cloneLoLb
-
+	
+	print "cloneLoLa=", cloneLoLa
+	print "cloneLoLb=", cloneLoLb
 
 	if timelapse == True:
 		superset = superset + ["TimePoint"]
+		
+	
 
 	#Get the numnber of measurements by taking the file list and getting the count
 	numMeasurements = len(cloneLoLa[0]) - 1
+	
+	print "numMeasurements=", numMeasurements
+	
 
 	#Add the headings from LoLa. The first value in each list is the header string. We only add the header if measurements were added to that list (length of the list is greater than 1)
 	measurementCount = 1
-	while measurementCount < numMeasurements:
+	while measurementCount <= numMeasurements:
 
 		count = 0
 		rtC.incrementCounter()
@@ -2041,4 +2059,7 @@ def create_clone_table(rtC, cloneLoLa, cloneLoLb, timepoint):
 
 
 		measurementCount += 1
+		
+
+		
 	return rtC

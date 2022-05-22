@@ -13,10 +13,10 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 
 	#Import user defined variables
 	import JSF_package
-	from JSF_package.configBasic import fluoChoice, cloneSeg
+	from JSF_package.configBasic import fluoChoice, cloneSeg, singleCellMethod, cloneChannel, cellCountChannel
 	from JSF_package import _misc_, caspase_analysis, cell_tracking, clone_analysis, configBasic, configCellTrack, configCloneSeg, configDeathSeg, configDeathTrack, configRoi, configSave, seeded_region_growing, speckles_analysis, start_up, tracking_and_outputs, user_inputs_GUI
 	
-	from JSF_package.configCloneSeg import subAdd, borderMargin, holeDiameter, rollingZ, winwo, seedChoiceClones, invertSeedClones, minSeedSizeClones
+	from JSF_package.configCloneSeg import subAdd, borderMargin, holeDiameter, rollingZ, winwo, seedChoiceClones, invertSeedClones, minSeedSizeClones, DBSCANChoice, DBSCANdistOE, DBSCANminDensityOE
 	from JSF_package.configRoi import halfHalf
 	
 	
@@ -24,7 +24,7 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 	from java.awt import Color, Rectangle
 	from ij.plugin import ZProjector
 	from ij import IJ
-	from JSF_package._misc_ import mask_confirmer, selection_confirmer
+	from JSF_package._misc_ import mask_confirmer, selection_confirmer, DBSCANtron
 	from ij.plugin import ImageCalculator
 	from ij.plugin.frame import RoiManager
 	from ij.plugin.filter import ParticleAnalyzer
@@ -32,6 +32,11 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 	from ij.gui import ShapeRoi
 	from random import randrange
 	import os
+	
+	if cloneSeg != "Membrane-tagged GFP" and cloneSeg !=  "Cytosolic GFP":
+		winwo = False
+		
+	wekaSkipImage = 0
 
 	IJ.redirectErrorMessages(True)
 	
@@ -92,16 +97,29 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 		#Call the weka classifier and have it segment the images
 		if JSF_package.configBasic.cloneSeg.endswith(".model"):
 			if JSF_package.configBasic.cloneSeg.find("_3D_.") == -1:
-				
-			
+
 				
 				from trainableSegmentation import WekaSegmentation
+				
+				wekaCal = cloneImp.getCalibration()
 
 				segmentator = WekaSegmentation( cloneImp )
 				classifierPath = os.path.join(os.getcwd(), "jars", "Lib", "JSF_package", "Weka_Models", JSF_package.configBasic.cloneSeg )
 				segmentator.loadClassifier(classifierPath)
 				resultant = segmentator.applyClassifier(cloneImp, 0, False)
+				
+				
+				
+				resultant.setCalibration(wekaCal)
+				
+				
+				
+				if (cloneSeg == singleCellMethod) and (cloneChannel == cellCountChannel):
+					wekaSkipImage = resultant
+				
+				
 				genotypeNames = segmentator.getClassLabels()
+				del segmentator
 				genotypeNames = genotypeNames[1:numGenotypes+1]
 				if JSF_package.configRoi.halfHalfNC == True:
 			
@@ -148,6 +166,8 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 
 			if JSF_package.configCloneSeg.clonesPost == "Despeckle":
 				IJ.run(resultant, "Despeckle", "")
+			elif JSF_package.configCloneSeg.clonesPost == 'Dilate, close, erode':
+				print "Dilate, close, erode selected"				
 			elif JSF_package.configBasic.cloneSeg.find("_3D_.") == -1:
 				from JSF_End_User_Made_Code._executor import user_made_code
 				resultant = user_made_code(JSF_package.configCloneSeg.clonesPost, resultant, IDs, rm, stackno, pouch, excludinator)
@@ -211,9 +231,18 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 				IJ.run(resultantDup, "Invert", "")	
 
 				manager.runCommand("Deselect")
+				
+				IJ.log("Hole-filling analyze particles step:")
+				
+				blankRoi = ShapeRoi(1,1, Rectangle(0,0,1,1))
+				rm.addRoi(blankRoi)
 				aROIs = manager.getSelectedRoisAsArray()
 				manager.reset()
-				if aROIs:
+				
+				print "length of aROIs=", len(aROIs)
+				
+				if len(aROIs) > 1:
+					aROIs = aROIs[:-1]
 					op = ShapeRoi(aROIs[0])
 					for rp in aROIs:
 						rp = ShapeRoi(rp)
@@ -233,6 +262,9 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 					IJ.run(resultantDup, "Select None", "")
 	
 					manager.runCommand("Deselect")
+					
+					
+					IJ.log("Despeckle analyze particle step clones")
 					aROIs = manager.getSelectedRoisAsArray()
 					manager.reset()
 					if aROIs:
@@ -337,6 +369,8 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 	
 		#We take all these ROIs and clear them, essentially deleting the holes because the image is an inverting LUT.
 		manager.runCommand("Deselect")
+		
+		IJ.log("Analyze particles step to clear holes")
 		aROIs = manager.getSelectedRoisAsArray()
 		manager.reset()
 		if aROIs:
@@ -363,6 +397,9 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 			IJ.run(resultant, "Canvas Size...", "width="+str(resultant.getWidth())+" height="+str(iHeight+100)+" position=Top-Left zero")
 			mask_confirmer(iHeight + 20, resultant)			
 
+
+		
+		
 		genotypesImpArray.extend([resultant])
 
 		if JSF_package.configRoi.halfHalfNC == True:
@@ -424,22 +461,53 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 	loopNC = 0
 
 	genotypeChannel = 1	
-
 	
+	
+	substitutionCounter = 0
 	for resultant in genotypesImpArray:
 
-	
 		
 		color = colorArray[genotypeChannel-1]
 		
+
 		IJ.run(resultant, 'Make Binary', "")
+		#IJ.run(resultant, "Convert to Mask", "")
+		mask_confirmer(iHeight + 20, resultant)	
+
+				
+
+		###Optional post-processing step
+		if JSF_package.configCloneSeg.clonesPost == "Dilate, close, erode":
+			IJ.run(resultant, "Dilate", "")
+			IJ.run(resultant, "Dilate", "")
+			IJ.run(resultant, "Close-", "")
+			IJ.run(resultant, "Erode", "")
+		
+		#This is the optional DBSCAN function
+		############################################################################
+		#Here we run the DBSCAN clustering algorithm with biovoxxel's SSIDC plugin
+
+		
+		if DBSCANChoice != "Disabled":
+
+			#Call DBSCAN function
+			resultant, rm = DBSCANtron(resultant, rm, iHeight)
+			
+			genotypesImpArray[substitutionCounter] = resultant
+			substitutionCounter += 1
+					
+		#########################################
+		
 		
 		#We create a selection from the mask
+		IJ.run(resultant, "Select None", "")
 		IJ.run(resultant, "Create Selection", "")
+		
+
 	
 
 		if "Custom" not in JSF_package.configBasic.cloneSeg:
-			#If we want ot analyze the unlabelled cells, we just invert this selection if prompted by the user
+			#If we want to analyze the unlabelled cells, we just invert this selection if prompted by the user
 			if winwo == True:
 				IJ.run(resultant, "Make Inverse", "")	
 		
@@ -482,7 +550,7 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 		peeps = rm.getCount()
 		z, isClone = selection_confirmer(z, iHeight, resultant)
 		
-		
+
 			
 		loopNC = 1
 		#Here we check if a selection was created. If it was not, there are no clones, we create placeholder clones, and start the the loop again for the next level up.
@@ -508,8 +576,12 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 			rm.select(peeps+3)
 			rm.runCommand("Rename", "Not_Clones_ROI_Z:"+str(stackno)+isClone+"_genotype"+str(genotypeChannel)+"_timepoint"+str(timepoint))	
 			noClones = 1
+			borderArray[genotypeChannel-1] = borderArray[genotypeChannel-1] + [peeps+2]
+			
+			
+			
 		else:
-		
+
 			if halfHalf == False:
 				rm.addRoi(z)
 			else:
@@ -518,6 +590,10 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 				
 				z = toBeExcluded.not(excludinator)
 				rm.addRoi(z)
+				
+
+			
+
 			
 			#We now get the shrunken clones to get the clone center ROI. The amount of reduction is determined by the user
 			resultant.setRoi(pholder)
@@ -556,6 +632,10 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 			#This is our border ROI
 			rm.select(peeps+2)
 			rm.runCommand("Rename", "Border_ROI_Z:"+str(stackno)+isBorder+"_genotype"+str(genotypeChannel)+"_timepoint"+str(timepoint))
+			
+
+			
+			
 			
 			borderArray[genotypeChannel-1] = borderArray[genotypeChannel-1] + [peeps+2]
 
@@ -719,7 +799,7 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 	if JSF_package.configRoi.halfHalfNC == True:
 		Roido = roidoArchive
 		
-	return Title, genotypesImpArray, noClones, caliber, sliceROIs, borderArray, cloneMask, borderMask, cloneImp, cloneBorderImp, Roido, genotypeNames, fullCloneROIArray
+	return Title, genotypesImpArray, noClones, caliber, sliceROIs, borderArray, cloneMask, borderMask, cloneImp, cloneBorderImp, Roido, genotypeNames, fullCloneROIArray, rm, wekaSkipImage
 		
 ##################################
 # This is the clone segmentation function
@@ -745,9 +825,10 @@ def clone_segmentor (genotypesImpArray, rm, Title, numImages, stackno, pouch, ca
 	a = rm.getCount()
 	for resultant in genotypesImpArray:
 
-				
+
 
 		border = a - 2 - corrector
+		
 		corrector = corrector - 4
 		pouchRoi = pouch.clone()
 
@@ -772,6 +853,7 @@ def clone_segmentor (genotypesImpArray, rm, Title, numImages, stackno, pouch, ca
 			#Run the algorithm on a duplicate image
 			resultant2 = resultant.duplicate()
 			IJ.run(resultant2, "Select None", "")
+			
 			IJ.run(resultant2, "SSIDC Cluster Indicator", "distance=" + str(DBSCANdist)+" mindensity="+str(DBSCANminDensity))
 			resultant2.flush()
 
@@ -781,6 +863,9 @@ def clone_segmentor (genotypesImpArray, rm, Title, numImages, stackno, pouch, ca
 			rm = RoiManager.getInstance()
 			rm.runCommand(resultant ,"Show None")
 			rm.runCommand("Select All")
+			
+			#allClusters is our DBSCAN ROIs
+			IJ.log("DBSCAN clones analyze particles step")
 			allClusters = rm.getSelectedRoisAsArray()
 			rm.reset()
 			rm.getInstance()
@@ -791,13 +876,11 @@ def clone_segmentor (genotypesImpArray, rm, Title, numImages, stackno, pouch, ca
 			#They will then be picked up in the subsequent analyze particles step
 			for clusterRoi in allClusters:			
 				resultant.setRoi(clusterRoi)
-
 				
 				if DBSCANmode != "Cluster Without Flooding":
 					IJ.run(resultant, "Clear", "")
 
 				#Otherwise, we run an analyze particles step within these rois, adding the separate areas to the ROI manager as one item
-				
 				else:
 
 					#Get the intersection with the pouch and ensure that there is an ROI
@@ -813,38 +896,62 @@ def clone_segmentor (genotypesImpArray, rm, Title, numImages, stackno, pouch, ca
 					if yarp < 5:
 						continue
 					
+					#Analyze particles to get each individual cell
 					resultant2 = resultant.duplicate()
 					resultant2.setRoi(clusterRoi)
 					IJ.run(resultant2, "Analyze Particles...", "size="+str(minCloneSize/(caliber*caliber))+"-9999999999999999 circularity=0.00-1.00 add")
 					resultant2.flush()
 					cROIs = []
+					
+					
+					#cROIs is all of the individual items in the DBSCAN area
 					while rm.getCount() > rCount:
 						newRoi = ShapeRoi(rm.getRoi(rm.getCount() - 1))
 						resultant.setRoi(newRoi)
 						cROIs = cROIs+[newRoi]
 						rm.select(rm.getCount() - 1)
 						rm.runCommand("Delete")	
+						
+					
 					
 
 					for clusterROI2 in cROIs:
 						clusterROI2 = ShapeRoi(clusterROI2)
 						resultant.setRoi(clusterROI2)
+						IJ.setForegroundColor(255, 255, 255)
 						IJ.run(resultant, "Fill", "")
-					aROIs = aROIs + cROIs
+						
+					roiToAdd = cROIs[0]
+					roiToAdd = ShapeRoi(roiToAdd)
+					for item in cROIs[1:]:
+						merger = ShapeRoi(item)
+						roiToAdd.or(merger)
+						
+					aROIs = aROIs + [roiToAdd]
+					
+
+
 
 			
 		
 		#Here we run an analyze particles step. This allows us to identify each clone individually and add it to the roimanager
 		#We also keep track of how many ROIs there are before and after this step
 		resultant.setRoi(pouchRoi)
+		
 
 		#Create and set up our roiManager
+		IJ.log("Starting particle analysis for clones")
+		
 		manager = RoiManager(True)
 		ParticleAnalyzer.setRoiManager(manager) 
 		pa = ParticleAnalyzer(ParticleAnalyzer.ADD_TO_MANAGER | ParticleAnalyzer.SHOW_NONE,Measurements.AREA,ResultsTable(), minCloneSize/(caliber*caliber), 99999999999999999, 0.0, 1.0)
 		pa.setHideOutputImage(True)
 		
 		pa.analyze(resultant)
+		
+		
+
+		
 		manager.runCommand("Deselect")
 		
 
@@ -855,20 +962,26 @@ def clone_segmentor (genotypesImpArray, rm, Title, numImages, stackno, pouch, ca
 		for newRoi in bROIs:
 			aROIs = aROIs+[newRoi]
 		manager.reset()
+		
 
 		#get the border roi form the general ROI manager
 		cloneFullRoi = ShapeRoi(rm.getRoi(border-2))
 		
 		resultant.setRoi(cloneFullRoi)
+
 		
 		y = 1 #y is just a counter we use for tracking indexes through the loop
 		newAssignments = list() # newAssignments is a list of all the new ROIs at a given z-level
+		
+		
 		#the variable rp ('Roi Presumptive') is an roi from the analyze particles step.
 		for rp in aROIs:
+		
 
 			#check for overlap with border ROI to see if it falls in our measurements region
 			cloneFullRoiDup = cloneFullRoi.clone()
 			rp = ShapeRoi(rp)
+			#rpReserve = rp.clone()
 			rp = rp.and(cloneFullRoiDup)
 			b = str(rp).find("width")
 			b = str(rp)[b+6:b+7]
@@ -877,6 +990,7 @@ def clone_segmentor (genotypesImpArray, rm, Title, numImages, stackno, pouch, ca
 			yarp = rp.getLength()
 			if yarp < 5:
 				continue
+			#rm.addRoi(rpReserve)
 			rm.addRoi(rp)
 
 			#rename new ROI and add it to our assignments list
@@ -893,5 +1007,8 @@ def clone_segmentor (genotypesImpArray, rm, Title, numImages, stackno, pouch, ca
 		cloneROIs[count] = collate
 
 		count += 1
+		
+
+
 		
 	return cloneROIs, rm

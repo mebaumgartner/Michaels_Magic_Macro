@@ -112,7 +112,7 @@ def channel_organize_and_open(indices, inPath, timeFinish, timepoint ):
 	from JSF_package._misc_ import channel_open
 	import JSF_package
 	from JSF_package import _misc_, caspase_analysis, cell_tracking, clone_analysis, configBasic, configCellTrack, configCloneSeg, configDeathSeg, configDeathTrack, configRoi, configSave, seeded_region_growing, speckles_analysis, start_up, tracking_and_outputs, user_inputs_GUI
-	from JSF_package.configBasic import ROIchannel, preProcess, cloneChannel, timelapse, speckleChannel, DAPIchannel, cellCountChannel, dcp1Channel, fluoChannel, fluoChoice, speckle, ROIseg, singleCellMethod, cloneSeg, cellDeathSegMethod
+	from JSF_package.configBasic import ROIchannel, gdScaledOption, preProcess, cloneChannel, timelapse, speckleChannel, DAPIchannel, cellCountChannel, dcp1Channel, fluoChannel, fluoChoice, speckle, ROIseg, singleCellMethod, cloneSeg, cellDeathSegMethod
 	from JSF_package.configCloneSeg import seedChannelClones, seedChoiceClones
 	from JSF_package.configCellTrack import seedChannelCell, seedChoiceCell
 	from JSF_package.configDeathSeg import seedChoiceCas, seedChannelCas
@@ -249,6 +249,11 @@ def channel_organize_and_open(indices, inPath, timeFinish, timepoint ):
 					ch.addSlice(str(i), stack.getProcessor(index))
 				IDs = ImagePlus("Channel " + str(item), ch)
 				IDs.setCalibration(calibration)
+				
+				if gdScaledOption != True:
+					IDs.setCalibration(None)
+	
+				
 				IDs.setTitle(Title)
 			else:
 				IDs = 0
@@ -305,6 +310,11 @@ def decode_channels(idSearch, pullArray, colorsOfChannels, multipleC):
 		if int(item[0]) in idSearch:
 			impsToPull = impsToPull + [item[1]]
 			Title = item[1].getTitle()
+			
+			
+	calibrationImage = impsToPull[0]
+	Calibration = calibrationImage.getCalibration()
+	
 	if len(impsToPull) == 1:
 		baseImp = impsToPull[0]
 		if multipleC == 1:
@@ -317,17 +327,21 @@ def decode_channels(idSearch, pullArray, colorsOfChannels, multipleC):
 				IJ.run(impsToPull[count], colorSet[count], "")
 				count +=1
 		baseImp = concat.mergeChannels(impsToPull, True)
+		
 
 		rgbSwitch = False
 		rgbCount = 0
 		while rgbCount < len(res1):
 			check = res1[rgbCount]
 
-#			if check in acceptableStrings:
-#				rgbSwitch = True
+
+			#Recently changed. be suspicious here if issues arise
+			if check in acceptableStrings:
+				rgbSwitch = True
 
 			rgbCount+=1
 
+	
 		if rgbSwitch == True:
 			IJ.run(baseImp, "RGB Color", "slices")
 
@@ -336,6 +350,10 @@ def decode_channels(idSearch, pullArray, colorsOfChannels, multipleC):
 
 	if multipleC==True:
 		colorsOfChannels = colorsOfChannels[1:]
+		
+
+	baseImp.setCalibration(Calibration)
+
 	return baseImp, colorsOfChannels
 
 ########################################################################################
@@ -363,6 +381,8 @@ def weka3D(IDs, method, genotypeNames):
 
 	#Get the class names from the WEKA classifier for use as our genotype names
 	genotypeNames = segmentator.getClassLabels()
+	
+	del segmentator
 
 	#Calibrate the image
 	segmentedIDs.setCalibration(IDs.getCalibration())
@@ -414,3 +434,198 @@ def find_minimum_distance(roi, x, y):
 
 	#return the coordinates of the nearest point on the ROI perimeter
 	return xmin, ymin
+	
+####################################################
+# This is the DBSCAN clustering tool
+def DBSCANtron (resultant, rm, iHeight):
+
+		####pholder
+		from ij import IJ
+		import os
+		from JSF_package.configCloneSeg import DBSCANChoice, DBSCANdistOE, DBSCANminDensityOE, DBSCANminCellsInCluster
+		from ij.plugin.frame import RoiManager
+		from ij.gui import ShapeRoi
+			
+		#The plugin will delete our ROIs. We save them, so we can retrieve them after we run the plugin
+		roiPath = os.path.join(os.getcwd(),"Jars", "Lib", "JSF_package", "workingROIs.zip")
+		rm.runCommand("Select All")
+		rm.runCommand("save selected", roiPath)
+		rm.reset()
+		rm.getInstance()
+		
+
+		#Run the algorithm on a duplicate image
+		resultant2 = resultant.duplicate()
+		
+		
+		#DBSCAN remove small cells step, test step
+		#####
+		#####
+		#####
+		
+		IJ.run(resultant2, "Analyze Particles...", "size=0.00-15 circularity=0.00-1.00 add")
+		
+		#Pull all of the resulting cluster ROIs from the ROI manager, store as a variable
+		rm = RoiManager.getInstance()
+		rm.runCommand(resultant2 ,"Show None")
+		rm.runCommand("Select All")
+		
+		#clusters2 is our DBSCAN ROIs, binned for overlap
+		IJ.log("DBSCAN particle analysis step 2")
+		outliersToRemove = rm.getSelectedRoisAsArray()
+		rm.reset()		
+		
+		
+		for outlier in outliersToRemove:	
+			outlier = ShapeRoi(outlier)
+			resultant2.setRoi(outlier)
+			IJ.run(resultant2, "Invert", "")
+		
+		rm.reset()
+		rm.getInstance()
+		IJ.run(resultant2, "Select None", "")
+		IJ.run(resultant2, "SSIDC Cluster Indicator", "distance=" + str(DBSCANdistOE)+" mindensity="+str(DBSCANminDensityOE))
+		
+
+		#Pull all of the resulting cluster ROIs from the ROI manager, store as a variable, then reload our previous ROIs
+		rm = RoiManager.getInstance()
+		rm.runCommand(resultant ,"Show None")
+		rm.runCommand("Select All")
+		
+		#allClusters is our DBSCAN ROIs
+		IJ.log("True DBSCAN particle analyzer step")
+		allClusters = rm.getSelectedRoisAsArray()
+		rm.reset()
+
+		#Resultant 2 is going to be a blank image onto which we will draw our cluster ROIs.
+		#By doing this, we can bin together overlapping clusters to get a 'region of engraftment'
+		resultant2 = resultant.duplicate()
+		IJ.run(resultant2, "Create Selection", "")
+		IJ.run(resultant2, "Fill", "")
+		resultant3 = resultant2.duplicate()
+
+		#In this step, we merge together all of our cluster ROIs into one big ROI, and draw that ROI on the image
+		resultant.setRoi(1, iHeight+20, 1, 1)
+		sumRoi = resultant.getRoi()
+		for item in allClusters:
+			sumRoi = item
+		sumRoi = ShapeRoi(sumRoi)
+		for clusterRoi in allClusters:	
+			clusterRoi = ShapeRoi(clusterRoi)
+			sumRoi.or(clusterRoi)	
+		resultant2.setRoi(sumRoi)
+		IJ.run(resultant2, "Clear", "")
+		IJ.run(resultant2, "Select None", "")
+		
+		
+		#We now run an analyze particles step to get each 'cluster of clusters'
+		IJ.run(resultant2, "Analyze Particles...", "size=0.00-1.000E19 circularity=0.00-1.00 add")
+		
+		#Pull all of the resulting cluster ROIs from the ROI manager, store as a variable, then reload our previous ROIs
+		rm = RoiManager.getInstance()
+		rm.runCommand(resultant ,"Show None")
+		rm.runCommand("Select All")
+		
+		#clusters2 is our DBSCAN ROIs, binned for overlap
+		IJ.log("DBSCAN particle analysis step 2")
+		clusters2 = rm.getSelectedRoisAsArray()
+		rm.reset()
+		
+		#We now run through each of these cluster of clusters to check how many cells they contain. 
+		#This is a filtering step where we get rid of excess clusters
+		resultant.setRoi(1, iHeight+20, 1, 1)
+		sumRoi = resultant.getRoi()
+		sumRoi = ShapeRoi(sumRoi)
+		
+		
+		filteredClusters = []
+		for item in clusters2:
+			resultant.setRoi(item)
+			
+			#run analyze particles step to figure out how many cells there are
+			IJ.run(resultant, "Analyze Particles...", "size=0.00-1.000E19 circularity=0.00-1.00 exclude add")
+			rm = RoiManager.getInstance()
+			rm.runCommand(resultant ,"Show None")
+			rm.runCommand("Select All")
+			
+			#clusters2 is our DBSCAN ROIs, binned for overlap
+			IJ.log("Running region specific DBSCAN particle analysis")
+			cells = rm.getSelectedRoisAsArray()
+			rm.reset()
+			if len(cells) >= DBSCANminCellsInCluster:
+				
+				filteredClusters = filteredClusters + [item]
+				sumRoi = item
+			
+
+			
+		#Now we bin together our filtered clusters, which we will use to count the number of total cells	
+		sumRoi = ShapeRoi(sumRoi)
+		for newRoi in filteredClusters:	
+			newRoi = ShapeRoi(newRoi)
+			sumRoi.or(newRoi)	
+			
+			
+		#Here is our decision point: treat the individual rois that have been clustered together as clones, use the DBSCAN search areas, or use the DBSCAN search areas + fill holes
+		if DBSCANChoice != "Cluster Without Flooding":
+			resultant3.setRoi(sumRoi)
+			IJ.run(resultant3, "Clear", "")
+			IJ.run(resultant3, "Select None", "")
+			
+			if DBSCANChoice == "Flood + Fill Foles":
+				IJ.run(resultant3, "Fill Holes", "")
+
+
+		else:
+		
+			
+			resultant.setRoi(sumRoi)
+			IJ.run(resultant, "Analyze Particles...", "size=0.00-1.000E19 circularity=0.00-1.00 exclude add")
+			
+			rm = RoiManager.getInstance()
+			rm.runCommand(resultant ,"Show None")
+			rm.runCommand("Select All")
+	
+			
+			#validCells is the cells identified in our clusters
+			IJ.log("Finding valid cells particle analysis step")
+			validCells = rm.getSelectedRoisAsArray()
+			
+			for item in validCells:
+				sumRoi = item
+			sumRoi = ShapeRoi(sumRoi)
+			for clusterRoi in validCells:	
+				clusterRoi = ShapeRoi(clusterRoi)
+				sumRoi.or(clusterRoi)	
+			resultant3.setRoi(sumRoi)
+			IJ.run(resultant3, "Clear", "")
+			IJ.run(resultant3, "Select None", "")
+			
+
+		
+		
+		rm.reset()
+		rm.getInstance()
+		rm.runCommand("Open", roiPath)
+		IJ.run(resultant, "Select None", "")
+		
+#			resultant2.setRoi(sumRoi)
+#			IJ.run(resultant2, "Make Inverse", "")			
+#			IJ.setForegroundColor(255, 255, 255)
+#			IJ.run(resultant2, "Fill", "")
+#			
+#
+#			
+#			#if DBSCANChoice == "Convex hull":
+#			IJ.run(resultant2, "Select None", "")
+#			IJ.run(resultant2, "Create Selection", "")
+#			IJ.run(resultant2, "Convex Hull", "")
+#			#IJ.run(resultant2, "Fill Holes", "")
+#			
+#			resultant2.show()
+#			exit()
+
+		
+		resultant = resultant3.duplicate()
+		
+		return resultant, rm
