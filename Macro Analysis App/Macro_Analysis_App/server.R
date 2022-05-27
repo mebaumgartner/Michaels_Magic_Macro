@@ -1863,7 +1863,7 @@ server <- function(input, output) {
             wwda2$Clone.Foci.Count / wwda2$Clone.Volume
           TrueCasCounts <- 1
           
-          
+        
           #Add individual cell count data, if available - this is where we bin cell count and foci count data together, so it's only available if the user specified individual foci and individual cell count analyses
           if ("Total.Number.of.Cells" %in% colnames(wwda2))
           {
@@ -1877,25 +1877,30 @@ server <- function(input, output) {
           
         }
         
+ 
+        
         #Add individual cell count data, if available
-        if ("Cell.Count.in.Border" %in% colnames(wwda))
+        if (("Cell.Count.in.Border" %in% colnames(wwda)) & ("Foci.Count.in.Border" %in% colnames(wwda)))
         {
+          
           wwda2 <-
             cbind(
               wwda2,
               Percent.Foci.Positive.Cells.in.Clones = wwda2$Clone.Foci.Count * 100 / wwda2$Number.of.Clone.Cells.And.Foci
             )
+       
           wwda2 <-
             cbind(
               wwda2,
               Percent.Foci.Positive.Cells.in.Border = wwda2$Border.Foci.Count * 100 / wwda2$Number.of.Border.Cells.And.Foci
             )
+        
           wwda2 <-
             cbind(
               wwda2,
               Percent.Foci.Positive.Cells.in.Center = wwda2$Center.Foci.Count * 100 / wwda2$Number.of.Center.Cells.And.Foci
             )
-          
+     
           TrueNonCasCounts <- 1
         }
         
@@ -2126,11 +2131,11 @@ server <- function(input, output) {
           paste(wwda2$Condition, wwda2$Experiment, sep = ", ")
         wwda2 <- wwda2[order(wwda2$ConditionAndExperiment),]
         
-        
+   
         
         #Step for fisher test of competitive index - here we prepare the contingency table
 
-        if ("Number.of.Border.Cells" %in% colnames(wwda2))
+        if (("Number.of.Border.Cells" %in% colnames(wwda2)) & ("Border.Foci.Count" %in% colnames(wwda2)))
         {
           borderCells <-
             aggregate(wwda2$Number.of.Border.Cells,
@@ -2170,6 +2175,7 @@ server <- function(input, output) {
               align = "l"
             )
         }
+  
         
         
         

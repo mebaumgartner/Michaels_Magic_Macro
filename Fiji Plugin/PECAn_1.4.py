@@ -1320,12 +1320,7 @@ def run_script():
 							goodImage = goodImage +1
 							
 							gc.collect()
-							
-							import sys
-							local_vars = list(locals().items())
-							for var, obj in local_vars:
-							    print(var, sys.getsizeof(obj))
-
+							IJ.run("Collect Garbage")
 
 
 

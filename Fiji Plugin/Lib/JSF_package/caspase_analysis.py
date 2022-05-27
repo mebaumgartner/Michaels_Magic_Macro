@@ -51,7 +51,7 @@ def caspase_segmentor (cal, imp, rm, Title, stackno, pouch, caspaseSegment, dcp1
 	import time
 	while 1 <= Max:
 
-		#time.sleep(0.0001)
+		
 		print "Caspase segmentor initiated"
 		
 		IJ.run("Clear Results")

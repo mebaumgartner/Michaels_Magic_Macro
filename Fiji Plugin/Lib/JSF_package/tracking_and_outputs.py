@@ -155,7 +155,7 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 	from ij.plugin.filter import ParticleAnalyzer, MaximumFinder
 	from ij.process import ImageProcessor as IPr
 
-	from time import sleep
+
 	IJ.redirectErrorMessages(True)
 
 	#Reset the measurements table and prepare our output headings
@@ -265,7 +265,6 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 			from JSF_End_User_Made_Code._executor import user_made_code
 			imp = user_made_code(JSF_package.configBasic.preProcess, imp, IDs3, rm, zStart, pouch, excludinator)
 
-	print "IDs selected
 	
 	IJ.run(imp, "Canvas Size...", "width="+str(iWidth)+" height="+str(iHeight+100)+" position=Top-Left zero")
 
@@ -324,7 +323,6 @@ def whole_disc_measurements(IDs, IDs3, numGenotypes, pouch, sliceROIs, casCasArr
 
 		#Here we run our measurements on the image. The measurements are all now in the measurements table
 		IJ.run("Clear Results")
-		#time.sleep(0.0001)
 		IJ.run(imp, "Measure", "")
 
 		#Ma is the measured area and Mf is the measured fluorescence
@@ -1037,24 +1035,22 @@ def tracking_measurements(IDs, IDs3,trackingArray, casMaskArray, cloneMaskArray,
 
 		#Here we create our output image stacks. These vary based on which output is being made
 		outImp = ImageStack(iWidth, iHeight)
-		
-		print "trackCount =", trackCount
-		
+				
 		x = 0
 		if trackCount == 1:
-			print 1
+	
 			while x < len(cloneTrackingArray):
 				outImp.addSlice(cloneTrackingArray[x].getTitle(), cloneTrackingArray[x].getProcessor())
 				cloneMaskStack.addSlice(cloneMaskArray[x].getTitle(), cloneMaskArray[x].getProcessor())
 				x = x + 1
 		elif trackCount == 2:
-			print 2
+	
 			while x < len(casMaskArray):
 				top = casMaskArray[x]
 				outImp.addSlice(casMaskArray[x].getTitle(), casMaskArray[x].getProcessor())
 				x = x + 1
 		else:
-			print 3
+	
 			while x < len(cloneImpArray):
 				outImp.addSlice(cloneImpArray[x].getTitle(), cloneImpArray[x].getProcessor())
 				x = x + 1
@@ -2026,8 +2022,6 @@ def create_clone_table(rtC, cloneLoLa, cloneLoLb, timepoint):
 
 	superset = cloneLoLa + cloneLoLb
 	
-	print "cloneLoLa=", cloneLoLa
-	print "cloneLoLb=", cloneLoLb
 
 	if timelapse == True:
 		superset = superset + ["TimePoint"]
@@ -2037,7 +2031,6 @@ def create_clone_table(rtC, cloneLoLa, cloneLoLb, timepoint):
 	#Get the numnber of measurements by taking the file list and getting the count
 	numMeasurements = len(cloneLoLa[0]) - 1
 	
-	print "numMeasurements=", numMeasurements
 	
 
 	#Add the headings from LoLa. The first value in each list is the header string. We only add the header if measurements were added to that list (length of the list is greater than 1)
