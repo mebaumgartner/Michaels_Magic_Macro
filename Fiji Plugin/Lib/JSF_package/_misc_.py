@@ -166,8 +166,9 @@ def channel_organize_and_open(indices, inPath, timeFinish, timepoint ):
 
 	#We loop through all the primary channels. If the user specified what color they should be in the output, we decode that here
 	for item in primaryChannels:
-		item.replace(" ", "")
-		item.strip(",")
+		
+		item = item.replace(" ", "")
+		item = item.strip(",")
 		x = item.split(",")
 
 		posColors = ["rR", "gG", "bB", "cC", "mM", "yY"]
@@ -262,7 +263,7 @@ def channel_organize_and_open(indices, inPath, timeFinish, timepoint ):
 
 	except:
 		pullArray = "Error"
-
+	
 	return pullArray, timeFinish, colorsOfChannels
 
 ############################################################
@@ -289,8 +290,8 @@ def decode_channels(idSearch, pullArray, colorsOfChannels, multipleC):
 		res1 = " ".join(re.split("[^a-zA-Z]*", idSearch))
 
 		#Get rid of white spaces and split at commas
-		idSearch.replace(" ", "")
-		idSearch.strip(",")
+		idSearch = idSearch.replace(" ", "")
+		idSearch = idSearch.strip(",")
 		idSearch = idSearch.split(",")
 
 		count = 0
@@ -298,9 +299,12 @@ def decode_channels(idSearch, pullArray, colorsOfChannels, multipleC):
 			idSearch[count] = re.sub('[^0-9]','', idSearch[count])
 			count +=1
 		idSearch = [ int(newChannelZ) for newChannelZ in idSearch ]
+
+		switchCount = count
 	else:
 		idSearch = [idSearch]
-
+		switchCount = 1
+		
 	#Initialize a variable to track which images we are going to assign to each channel
 	impsToPull = []
 
@@ -321,27 +325,31 @@ def decode_channels(idSearch, pullArray, colorsOfChannels, multipleC):
 			IJ.run(baseImp, colorSet[0], "")
 	else:
 		concat = RGBStackMerge()
-		if multipleC == 1:
+		if multipleC == 1 and len(colorSet) > 1:
 			count = 0
 			while count < len(impsToPull):
+				print ("count=", count, "impsToPull=", impsToPull, "colorSet=", colorSet)
 				IJ.run(impsToPull[count], colorSet[count], "")
 				count +=1
 		baseImp = concat.mergeChannels(impsToPull, True)
 		
 
 		rgbSwitch = False
-		rgbCount = 0
-		while rgbCount < len(res1):
-			check = res1[rgbCount]
+		if switchCount > 1:
+			rgbSwitch= True 
+#		rgbCount = 0
+#		while rgbCount < len(res1):
+#			check = res1[rgbCount]
+#
+##
+##			#Recently changed. be suspicious here if issues arise
+##			if check in acceptableStrings:
+##				rgbSwitch = True
+#					
+#
+#			rgbCount+=1
 
-
-			#Recently changed. be suspicious here if issues arise
-			if check in acceptableStrings:
-				rgbSwitch = True
-
-			rgbCount+=1
-
-	
+		
 		if rgbSwitch == True:
 			IJ.run(baseImp, "RGB Color", "slices")
 

@@ -101,6 +101,7 @@ def clone_analysis(IDs, Title, pouch, excludinator, stackno, iHeight, rm, sliceR
 				
 				from trainableSegmentation import WekaSegmentation
 				
+				
 				wekaCal = cloneImp.getCalibration()
 
 				segmentator = WekaSegmentation( cloneImp )
