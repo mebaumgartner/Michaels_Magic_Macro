@@ -1,6 +1,6 @@
 # Pipeline for Enhanced Clonal Analysis (PECAn)
 
-<a href="https://zenodo.org/badge/latestdoi/259308358"><img src="https://zenodo.org/badge/259308358.svg" alt="DOI"></a>
+[![DOI](https://zenodo.org/badge/259308358.svg)](https://zenodo.org/badge/latestdoi/259308358)
 
 ## Introduction
 
