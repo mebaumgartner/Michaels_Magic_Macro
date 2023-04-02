@@ -1,5 +1,7 @@
 # Pipeline for Enhanced Clonal Analysis (PECAn)
 
+<a href="https://zenodo.org/badge/latestdoi/259308358"><img src="https://zenodo.org/badge/259308358.svg" alt="DOI"></a>
+
 ## Introduction
 
 > The PECAn pipeline aims to serve as a complete, integrated image and data analysis and processing pipeline. PECAn aims to allow researchers to take complex images (2D or 3D, multichannel, multi-genotype, still images or videos) and convert them into useful data along with performing statistical tests and graph generation, all with minimal user input. The pipeline consists of two parts - an image analysis plugin for ImageJ/FIJI and a data processing, statistical analysis, and graph generation application written in R shiny.
